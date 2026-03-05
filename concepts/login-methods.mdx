@@ -1,0 +1,522 @@
+---
+title: Login Methods
+description: Different ways to implement Facebook Login in your React Native app
+---
+
+React Native FBSDK Next provides multiple ways to implement Facebook Login, each suited for different use cases and UI requirements.
+
+## Login Button
+
+The easiest way to add Facebook Login is using the pre-built `LoginButton` component.
+
+### Basic Usage
+
+```javascript
+import React from 'react';
+import { View } from 'react-native';
+import { LoginButton, AccessToken } from 'react-native-fbsdk-next';
+
+export default function App() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <LoginButton
+        onLoginFinished={(error, result) => {
+          if (error) {
+            console.log('Login failed:', error);
+          } else if (result.isCancelled) {
+            console.log('Login cancelled');
+          } else {
+            AccessToken.getCurrentAccessToken().then((data) => {
+              console.log('Login success! Token:', data.accessToken);
+            });
+          }
+        }}
+        onLogoutFinished={() => console.log('Logged out')}
+      />
+    </View>
+  );
+}
+```
+
+### Requesting Permissions
+
+```javascript
+<LoginButton
+  permissions={['public_profile', 'email', 'user_friends']}
+  onLoginFinished={(error, result) => {
+    if (result && !result.isCancelled) {
+      console.log('Granted:', result.grantedPermissions);
+      console.log('Declined:', result.declinedPermissions);
+    }
+  }}
+  onLogoutFinished={() => console.log('Logged out')}
+/>
+```
+
+### Customizing Appearance
+
+```javascript
+<LoginButton
+  permissions={['public_profile', 'email']}
+  style={{
+    height: 50,
+    width: 250,
+    borderRadius: 10,
+  }}
+  onLoginFinished={handleLogin}
+  onLogoutFinished={handleLogout}
+/>
+```
+
+### Platform-Specific Props
+
+#### iOS Props
+
+```javascript
+<LoginButton
+  permissions={['public_profile', 'email']}
+  // iOS Limited Login (required for iOS 14+ without ATT)
+  loginTrackingIOS="limited"
+  // Optional custom nonce for validation
+  nonceIOS="your_unique_nonce"
+  // Tooltip behavior
+  tooltipBehaviorIOS="auto" // 'auto' | 'force_display' | 'disable'
+  onLoginFinished={handleLogin}
+  onLogoutFinished={handleLogout}
+/>
+```
+
+#### Android Props
+
+```javascript
+<LoginButton
+  permissions={['public_profile', 'email']}
+  // Android login behavior
+  loginBehaviorAndroid="native_with_fallback" // 'native_with_fallback' | 'native_only' | 'web_only'
+  // Default audience for posts
+  defaultAudience="friends" // 'friends' | 'everyone' | 'only_me'
+  onLoginFinished={handleLogin}
+  onLogoutFinished={handleLogout}
+/>
+```
+
+## Login Manager
+
+For custom UI or more control over the login flow, use `LoginManager`.
+
+### Basic Login
+
+```javascript
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+
+async function handleLogin() {
+  try {
+    const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+    
+    if (result.isCancelled) {
+      console.log('Login cancelled');
+      return;
+    }
+    
+    const data = await AccessToken.getCurrentAccessToken();
+    console.log('Login success! User ID:', data.userID);
+  } catch (error) {
+    console.log('Login error:', error);
+  }
+}
+```
+
+### Custom Login Button
+
+```javascript
+import React from 'react';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+
+function CustomLoginButton() {
+  const handleLogin = async () => {
+    try {
+      const result = await LoginManager.logInWithPermissions([
+        'public_profile',
+        'email',
+      ]);
+      
+      if (!result.isCancelled) {
+        const token = await AccessToken.getCurrentAccessToken();
+        console.log('Logged in with token:', token.accessToken);
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+    }
+  };
+  
+  return (
+    <TouchableOpacity style={styles.button} onPress={handleLogin}>
+      <Text style={styles.buttonText}>Continue with Facebook</Text>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  button: {
+    backgroundColor: '#1877F2',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
+
+export default CustomLoginButton;
+```
+
+### iOS Limited Login
+
+```javascript
+import { Platform } from 'react-native';
+import { LoginManager, AccessToken, AuthenticationToken } from 'react-native-fbsdk-next';
+
+async function handleLogin() {
+  try {
+    const result = await LoginManager.logInWithPermissions(
+      ['public_profile', 'email'],
+      'limited', // iOS only: 'enabled' | 'limited'
+      'my_unique_nonce' // iOS only: optional nonce
+    );
+    
+    if (result.isCancelled) {
+      return;
+    }
+    
+    if (Platform.OS === 'ios') {
+      // On iOS with Limited Login, use AuthenticationToken
+      const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+      if (authToken) {
+        console.log('Authentication Token:', authToken.authenticationToken);
+        // Send to your server for verification
+      }
+    } else {
+      // On Android, always use AccessToken
+      const accessToken = await AccessToken.getCurrentAccessToken();
+      console.log('Access Token:', accessToken.accessToken);
+    }
+  } catch (error) {
+    console.error('Login failed:', error);
+  }
+}
+```
+
+## Configuring Login Behavior
+
+### Android Login Behavior
+
+Control how the login dialog appears on Android:
+
+```javascript
+import { LoginManager } from 'react-native-fbsdk-next';
+
+// Set before logging in
+LoginManager.setLoginBehavior('native_with_fallback');
+
+// Then perform login
+await LoginManager.logInWithPermissions(['public_profile']);
+
+// Get current behavior
+const behavior = await LoginManager.getLoginBehavior();
+console.log('Current behavior:', behavior);
+```
+
+**Available behaviors:**
+
+- `native_with_fallback` (default) - Try Facebook app, fall back to web
+- `native_only` - Only use Facebook app
+- `web_only` - Only use web dialog
+
+### iOS Login Behavior
+
+iOS always uses browser-based login (Safari or in-app browser). No configuration needed.
+
+### Default Audience
+
+Set the default audience for posts made by your app:
+
+```javascript
+import { LoginManager } from 'react-native-fbsdk-next';
+
+// Set default audience
+LoginManager.setDefaultAudience('friends');
+
+// Get current audience
+const audience = await LoginManager.getDefaultAudience();
+console.log('Current audience:', audience);
+```
+
+**Available audiences:**
+
+- `friends` - Only friends can see posts
+- `everyone` - All Facebook users can see posts
+- `only_me` - Only the user can see posts
+
+## Handling Login Results
+
+### Success State
+
+```javascript
+const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+
+if (!result.isCancelled) {
+  console.log('Granted permissions:', result.grantedPermissions);
+  console.log('Declined permissions:', result.declinedPermissions);
+  
+  // Get the access token
+  const token = await AccessToken.getCurrentAccessToken();
+  console.log('User ID:', token.userID);
+  console.log('App ID:', token.applicationID);
+}
+```
+
+### Cancelled State
+
+```javascript
+if (result.isCancelled) {
+  console.log('User cancelled the login process');
+  // Handle cancellation - maybe show a message or alternative option
+}
+```
+
+### Error Handling
+
+```javascript
+try {
+  const result = await LoginManager.logInWithPermissions(['public_profile']);
+  // Handle result
+} catch (error) {
+  console.error('Login error:', error.message);
+  
+  // Common errors:
+  // - Network connection issues
+  // - Facebook app not properly configured
+  // - Invalid app ID or configuration
+}
+```
+
+## Requesting Additional Permissions
+
+You can request additional permissions after initial login:
+
+```javascript
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+
+async function requestMorePermissions() {
+  try {
+    // Check current permissions
+    const currentToken = await AccessToken.getCurrentAccessToken();
+    console.log('Current permissions:', currentToken.permissions);
+    
+    // Request additional permissions
+    const result = await LoginManager.logInWithPermissions([
+      'user_friends',
+      'user_birthday',
+    ]);
+    
+    if (!result.isCancelled) {
+      const newToken = await AccessToken.getCurrentAccessToken();
+      console.log('New permissions:', newToken.permissions);
+    }
+  } catch (error) {
+    console.error('Failed to request permissions:', error);
+  }
+}
+```
+
+## Re-authorizing Data Access
+
+Data access permissions expire periodically. Re-authorize when needed:
+
+```javascript
+import { LoginManager } from 'react-native-fbsdk-next';
+
+async function reauthorize() {
+  try {
+    const result = await LoginManager.reauthorizeDataAccess();
+    
+    if (!result.isCancelled) {
+      console.log('Data access re-authorized');
+      // Continue with data operations
+    }
+  } catch (error) {
+    console.error('Reauthorization failed:', error);
+  }
+}
+```
+
+## Logging Out
+
+Log out the current user:
+
+```javascript
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+
+async function handleLogout() {
+  // Log out
+  LoginManager.logOut();
+  
+  // Verify logout
+  const token = await AccessToken.getCurrentAccessToken();
+  if (token === null) {
+    console.log('Successfully logged out');
+  }
+}
+```
+
+## Complete Login Flow Example
+
+```javascript
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { 
+  LoginManager, 
+  AccessToken, 
+  AuthenticationToken, 
+  Profile 
+} from 'react-native-fbsdk-next';
+
+function LoginScreen() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    checkLoginStatus();
+  }, []);
+  
+  const checkLoginStatus = async () => {
+    try {
+      const token = await AccessToken.getCurrentAccessToken();
+      if (token) {
+        const profile = await Profile.getCurrentProfile();
+        setUser(profile);
+      }
+    } catch (error) {
+      console.error('Error checking login status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      
+      const result = await LoginManager.logInWithPermissions(
+        ['public_profile', 'email'],
+        Platform.OS === 'ios' ? 'limited' : undefined
+      );
+      
+      if (result.isCancelled) {
+        console.log('Login cancelled');
+        return;
+      }
+      
+      // Get user info
+      const profile = await Profile.getCurrentProfile();
+      setUser(profile);
+      
+      console.log('Login successful!');
+    } catch (error) {
+      console.error('Login failed:', error);
+      alert('Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleLogout = () => {
+    LoginManager.logOut();
+    setUser(null);
+  };
+  
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+  
+  if (user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.welcome}>Welcome, {user.name}!</Text>
+        <Text>User ID: {user.userID}</Text>
+        <TouchableOpacity style={styles.button} onPress={handleLogout}>
+          <Text style={styles.buttonText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+  
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Login with Facebook</Text>
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+        <Text style={styles.buttonText}>Continue with Facebook</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  welcome: {
+    fontSize: 20,
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: '#1877F2',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
+
+export default LoginScreen;
+```
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="shield-check" href="/concepts/authentication">
+    Learn about access tokens and authentication tokens
+  </Card>
+  
+  <Card title="Limited Login" icon="user-shield" href="/concepts/limited-login">
+    Understand iOS Limited Login requirements
+  </Card>
+  
+  <Card title="Login Manager API" icon="code" href="/api/login-manager">
+    Complete API reference for LoginManager
+  </Card>
+  
+  <Card title="Login Button API" icon="code" href="/api/login-button">
+    Complete API reference for LoginButton
+  </Card>
+</CardGroup>

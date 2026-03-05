@@ -1,0 +1,392 @@
+---
+title: GraphRequestManager
+description: Execute and batch Facebook Graph API requests
+---
+
+The `GraphRequestManager` class manages the execution of one or more Graph API requests, with support for batch processing and callbacks.
+
+## Import
+
+```typescript
+import { GraphRequestManager } from 'react-native-fbsdk-next';
+```
+
+## Constructor
+
+```typescript
+new GraphRequestManager()
+```
+
+Creates a new manager for executing Graph API requests.
+
+## Properties
+
+### requestBatch
+
+Array of requests to be executed.
+
+```typescript
+requestBatch: Array<GraphRequest>
+```
+
+### requestCallbacks
+
+Array of callbacks corresponding to each request.
+
+```typescript
+requestCallbacks: Array<Callback | undefined>
+```
+
+### batchCallback
+
+Optional callback invoked when the entire batch completes.
+
+```typescript
+batchCallback: Callback | null
+```
+
+## Methods
+
+### addRequest
+
+Adds a Graph API request to the batch.
+
+```typescript
+addRequest(request: GraphRequest): GraphRequestManager
+```
+
+<ParamField path="request" type="GraphRequest" required>
+  The request to add to the batch.
+</ParamField>
+
+Returns the manager instance for method chaining.
+
+### addBatchCallback
+
+Sets a callback to be invoked when the entire batch finishes executing.
+
+```typescript
+addBatchCallback(
+  callback: (error?: Record<string, unknown>, result?: Record<string, unknown>) => void
+): GraphRequestManager
+```
+
+<ParamField path="callback" type="(error?, result?) => void" required>
+  Function called when the batch completes. Only one batch callback can be set.
+</ParamField>
+
+<Note>
+The batch callback indicates that execution has finished, **not** that every request succeeded. Check individual request callbacks for per-request status.
+</Note>
+
+Returns the manager instance for method chaining.
+
+### start
+
+Executes all requests in the batch.
+
+```typescript
+start(timeout?: number): void
+```
+
+<ParamField path="timeout" type="number">
+  Optional timeout in milliseconds. Defaults to 0 (no timeout).
+</ParamField>
+
+<Warning>
+Network error handling differs between platforms:
+- **iOS**: Batch callback returns an error if the batch fails due to network issues
+- **Android**: Batch callback always returns `{"result": "batch finished executing"}` after timeout, even with network errors
+
+For network status detection on Android, use React Native's `NetInfo` module instead.
+</Warning>
+
+## Usage Examples
+
+### Single Request
+
+```typescript
+import { GraphRequest, GraphRequestManager } from 'react-native-fbsdk-next';
+
+const request = new GraphRequest(
+  '/me',
+  null,
+  (error, result) => {
+    if (error) {
+      console.log('Error:', error);
+    } else {
+      console.log('User:', result);
+    }
+  }
+);
+
+const manager = new GraphRequestManager();
+manager.addRequest(request).start();
+```
+
+### Multiple Requests (Batch)
+
+```typescript
+const userRequest = new GraphRequest(
+  '/me',
+  {
+    parameters: {
+      fields: { string: 'id,name,email' },
+    },
+  },
+  (error, result) => {
+    if (error) {
+      console.log('User request error:', error);
+    } else {
+      console.log('User:', result);
+    }
+  }
+);
+
+const friendsRequest = new GraphRequest(
+  '/me/friends',
+  null,
+  (error, result) => {
+    if (error) {
+      console.log('Friends request error:', error);
+    } else {
+      console.log('Friends:', result);
+    }
+  }
+);
+
+const photosRequest = new GraphRequest(
+  '/me/photos',
+  {
+    parameters: {
+      limit: { string: '10' },
+    },
+  },
+  (error, result) => {
+    if (error) {
+      console.log('Photos request error:', error);
+    } else {
+      console.log('Photos:', result);
+    }
+  }
+);
+
+const manager = new GraphRequestManager();
+manager
+  .addRequest(userRequest)
+  .addRequest(friendsRequest)
+  .addRequest(photosRequest)
+  .start();
+```
+
+### With Batch Callback
+
+```typescript
+const request1 = new GraphRequest(
+  '/me',
+  null,
+  (error, result) => {
+    console.log('Request 1:', error || result);
+  }
+);
+
+const request2 = new GraphRequest(
+  '/me/friends',
+  null,
+  (error, result) => {
+    console.log('Request 2:', error || result);
+  }
+);
+
+const manager = new GraphRequestManager();
+manager
+  .addRequest(request1)
+  .addRequest(request2)
+  .addBatchCallback((error, result) => {
+    if (error) {
+      console.log('Batch failed:', error);
+    } else {
+      console.log('Batch completed:', result);
+    }
+  })
+  .start();
+```
+
+### With Timeout
+
+```typescript
+const request = new GraphRequest(
+  '/me',
+  null,
+  (error, result) => {
+    if (error) {
+      console.log('Request error:', error);
+    } else {
+      console.log('Result:', result);
+    }
+  }
+);
+
+const manager = new GraphRequestManager();
+manager.addRequest(request).start(5000); // 5 second timeout
+```
+
+### Complex Batch with Error Handling
+
+```typescript
+import { GraphRequest, GraphRequestManager } from 'react-native-fbsdk-next';
+
+const fetchUserData = () => {
+  const requests = [
+    { path: '/me', name: 'user' },
+    { path: '/me/friends', name: 'friends' },
+    { path: '/me/albums', name: 'albums' },
+  ];
+
+  const results: Record<string, any> = {};
+  let completedRequests = 0;
+
+  const manager = new GraphRequestManager();
+
+  requests.forEach(({ path, name }) => {
+    const request = new GraphRequest(
+      path,
+      null,
+      (error, result) => {
+        completedRequests++;
+        
+        if (error) {
+          console.log(`Error fetching ${name}:`, error);
+          results[name] = { error };
+        } else {
+          console.log(`Fetched ${name}:`, result);
+          results[name] = result;
+        }
+
+        if (completedRequests === requests.length) {
+          console.log('All requests completed:', results);
+        }
+      }
+    );
+    manager.addRequest(request);
+  });
+
+  manager.addBatchCallback((error, result) => {
+    if (error) {
+      console.log('Batch error:', error);
+    } else {
+      console.log('Batch finished:', result);
+    }
+  });
+
+  manager.start();
+};
+
+fetchUserData();
+```
+
+### Loading State Management
+
+```typescript
+import React, { useState } from 'react';
+import { GraphRequest, GraphRequestManager } from 'react-native-fbsdk-next';
+
+const UserProfile = () => {
+  const [loading, setLoading] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const [error, setError] = useState(null);
+
+  const loadUserProfile = () => {
+    setLoading(true);
+    setError(null);
+
+    const request = new GraphRequest(
+      '/me',
+      {
+        parameters: {
+          fields: { string: 'id,name,email,picture' },
+        },
+      },
+      (error, result) => {
+        if (error) {
+          setError(error);
+          setUserData(null);
+        } else {
+          setUserData(result);
+          setError(null);
+        }
+      }
+    );
+
+    const manager = new GraphRequestManager();
+    manager
+      .addRequest(request)
+      .addBatchCallback(() => {
+        setLoading(false);
+      })
+      .start();
+  };
+
+  return (
+    // Your component JSX here
+  );
+};
+```
+
+## TypeScript Types
+
+### Callback
+
+```typescript
+type Callback = (
+  error?: Record<string, unknown>,
+  result?: Record<string, unknown>
+) => void;
+```
+
+<ResponseField name="error" type="Record<string, unknown>">
+  Error object if the operation failed, undefined otherwise.
+</ResponseField>
+
+<ResponseField name="result" type="Record<string, unknown>">
+  Response data if the operation succeeded, undefined otherwise.
+</ResponseField>
+
+## Method Chaining
+
+All configuration methods return the manager instance, allowing fluent method chaining:
+
+```typescript
+new GraphRequestManager()
+  .addRequest(request1)
+  .addRequest(request2)
+  .addRequest(request3)
+  .addBatchCallback((error, result) => {
+    console.log('Done!');
+  })
+  .start(10000);
+```
+
+## Performance Benefits
+
+Batching multiple requests provides several benefits:
+
+1. **Reduced network overhead** - Single HTTP request for multiple Graph API calls
+2. **Lower latency** - Parallel execution of independent requests
+3. **Better resource usage** - Fewer round trips to Facebook servers
+4. **Cleaner code** - Centralized completion handling
+
+## Best Practices
+
+1. **Batch related requests** together when possible
+2. **Set appropriate timeouts** for your network conditions
+3. **Handle individual request errors** in addition to batch errors
+4. **Use batch callbacks** for loading state management
+5. **Limit batch size** to avoid excessively long requests (Facebook recommends max 50 requests per batch)
+6. **Check platform differences** for network error handling
+
+## Related
+
+- [GraphRequest](/api/graph-request) - Create individual Graph API requests
+- [Facebook Graph API Documentation](https://developers.facebook.com/docs/graph-api)
+- [React Native NetInfo](https://github.com/react-native-netinfo/react-native-netinfo) - Network status detection

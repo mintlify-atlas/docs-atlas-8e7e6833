@@ -1,0 +1,608 @@
+---
+title: AuthenticationToken
+description: API reference for the AuthenticationToken class (iOS Limited Login)
+---
+
+The `AuthenticationToken` class represents an authentication token received from iOS Limited Login. It wraps an OpenID Connect token that can be used to verify a user's identity but cannot access the Graph API.
+
+<Note>
+  AuthenticationToken is **iOS only** and is used with [Limited Login](/concepts/limited-login). For traditional login, use [AccessToken](/api/access-token) instead.
+</Note>
+
+## Import
+
+```javascript
+import { AuthenticationToken } from 'react-native-fbsdk-next';
+```
+
+## Static Methods
+
+### getAuthenticationTokenIOS
+
+Retrieves the current authentication token (iOS only).
+
+```typescript
+static getAuthenticationTokenIOS(): Promise<AuthenticationToken | null>
+```
+
+#### Returns
+
+`Promise<AuthenticationToken | null>` - Resolves with an `AuthenticationToken` instance if Limited Login was used, or `null` otherwise.
+
+**Platform:** iOS only (returns `null` on Android)
+
+#### Example
+
+```javascript
+import { AuthenticationToken } from 'react-native-fbsdk-next';
+import { Platform } from 'react-native';
+
+async function checkAuthToken() {
+  if (Platform.OS !== 'ios') {
+    console.log('Authentication tokens are iOS only');
+    return;
+  }
+  
+  const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+  
+  if (authToken) {
+    console.log('Limited Login detected');
+    console.log('Auth Token:', authToken.authenticationToken);
+    console.log('Nonce:', authToken.nonce);
+    console.log('Graph Domain:', authToken.graphDomain);
+    
+    // Send to your server for validation
+    await validateTokenOnServer(authToken);
+  } else {
+    console.log('No authentication token (using traditional login)');
+  }
+}
+```
+
+#### Checking Login Type
+
+```javascript
+import { Platform } from 'react-native';
+import {
+  AccessToken,
+  AuthenticationToken,
+} from 'react-native-fbsdk-next';
+
+async function getLoginType() {
+  if (Platform.OS === 'ios') {
+    const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+    if (authToken) {
+      return 'limited';
+    }
+  }
+  
+  const accessToken = await AccessToken.getCurrentAccessToken();
+  if (accessToken) {
+    return 'traditional';
+  }
+  
+  return 'not_logged_in';
+}
+
+const loginType = await getLoginType();
+console.log('Login type:', loginType);
+```
+
+## Instance Properties
+
+### authenticationToken
+
+The raw OpenID Connect token string from the authentication response.
+
+```typescript
+authenticationToken: string
+```
+
+<Warning>
+This token **cannot** be used to access the Facebook Graph API. Attempting to do so will result in an error: "Invalid OAuth access token - Cannot parse access token"
+</Warning>
+
+#### Example
+
+```javascript
+const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+
+if (authToken) {
+  console.log('Token:', authToken.authenticationToken);
+  
+  // Send to your server for validation
+  const response = await fetch('https://your-api.com/auth/facebook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      token: authToken.authenticationToken,
+      nonce: authToken.nonce,
+    }),
+  });
+  
+  const userData = await response.json();
+  console.log('User verified:', userData);
+}
+```
+
+---
+
+### nonce
+
+The nonce from the decoded authentication response. Used for validating the authentication attempt.
+
+```typescript
+nonce: string
+```
+
+The nonce is a unique string that prevents replay attacks. You should verify that this nonce matches the one you provided (or was generated) during login.
+
+#### Example
+
+```javascript
+import { AuthenticationToken } from 'react-native-fbsdk-next';
+
+const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+
+if (authToken) {
+  console.log('Nonce:', authToken.nonce);
+  
+  // Verify nonce matches expected value
+  const expectedNonce = await getStoredNonce();
+  if (authToken.nonce !== expectedNonce) {
+    console.error('Nonce mismatch - possible replay attack!');
+    // Handle security issue
+  }
+}
+```
+
+---
+
+### graphDomain
+
+The graph domain where the user is authenticated.
+
+```typescript
+graphDomain: string
+```
+
+Typically this will be `"facebook"` for standard Facebook users.
+
+#### Example
+
+```javascript
+const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+
+if (authToken) {
+  console.log('Graph Domain:', authToken.graphDomain);
+  // Usually: "facebook"
+}
+```
+
+## Types
+
+### AuthenticationTokenMap
+
+```typescript
+type AuthenticationTokenMap = {
+  authenticationToken: string;
+  nonce: string;
+  graphDomain: string;
+}
+```
+
+Represents the raw authentication token data returned from the native SDK.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `authenticationToken` | `string` | The OpenID Connect token string |
+| `nonce` | `string` | The nonce used for validation |
+| `graphDomain` | `string` | The graph domain (usually "facebook") |
+
+## Server-Side Validation
+
+Authentication Tokens must be validated on your server. Here's how to implement it:
+
+### Client Side: Send Token to Server
+
+```javascript
+import { AuthenticationToken } from 'react-native-fbsdk-next';
+import { Platform } from 'react-native';
+
+async function loginAndVerify() {
+  if (Platform.OS !== 'ios') {
+    console.log('Authentication tokens are iOS only');
+    return;
+  }
+  
+  const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+  
+  if (!authToken) {
+    console.log('No authentication token available');
+    return;
+  }
+  
+  try {
+    // Send to your server for validation
+    const response = await fetch('https://your-api.com/auth/verify-facebook', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        token: authToken.authenticationToken,
+        nonce: authToken.nonce,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Validation failed');
+    }
+    
+    const userData = await response.json();
+    console.log('User validated:', userData);
+    
+    return userData;
+  } catch (error) {
+    console.error('Token validation failed:', error);
+    throw error;
+  }
+}
+```
+
+### Server Side: Validate Token (Node.js Example)
+
+```javascript
+// Server-side code (Node.js with Express)
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const jwksClient = require('jwks-rsa');
+
+const app = express();
+app.use(express.json());
+
+// Configure JWKS client
+const client = jwksClient({
+  jwksUri: 'https://www.facebook.com/.well-known/oauth/openid/jwks/',
+  cache: true,
+  cacheMaxAge: 86400000, // 24 hours
+});
+
+function getKey(header, callback) {
+  client.getSigningKey(header.kid, (err, key) => {
+    if (err) {
+      callback(err);
+      return;
+    }
+    const signingKey = key.publicKey || key.rsaPublicKey;
+    callback(null, signingKey);
+  });
+}
+
+app.post('/auth/verify-facebook', async (req, res) => {
+  const { token, nonce } = req.body;
+  
+  try {
+    // Verify and decode the JWT
+    const decoded = await new Promise((resolve, reject) => {
+      jwt.verify(
+        token,
+        getKey,
+        {
+          algorithms: ['RS256'],
+          audience: process.env.FACEBOOK_APP_ID,
+          issuer: 'https://www.facebook.com',
+        },
+        (err, decoded) => {
+          if (err) reject(err);
+          else resolve(decoded);
+        }
+      );
+    });
+    
+    // Verify nonce
+    if (decoded.nonce !== nonce) {
+      return res.status(400).json({ error: 'Invalid nonce' });
+    }
+    
+    // Token is valid
+    res.json({
+      valid: true,
+      userId: decoded.sub,
+      email: decoded.email,
+      name: decoded.name,
+    });
+  } catch (error) {
+    console.error('Token validation failed:', error);
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+app.listen(3000);
+```
+
+See [Facebook's validation documentation](https://developers.facebook.com/docs/facebook-login/limited-login/token/validating) for complete details.
+
+## Complete Usage Example
+
+```javascript
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  Button,
+  StyleSheet,
+  Platform,
+  Alert,
+} from 'react-native';
+import {
+  LoginManager,
+  AuthenticationToken,
+  AccessToken,
+  Profile,
+} from 'react-native-fbsdk-next';
+
+function LimitedLoginExample() {
+  const [user, setUser] = useState(null);
+  const [loginType, setLoginType] = useState(null);
+  const [tokenInfo, setTokenInfo] = useState(null);
+  
+  useEffect(() => {
+    checkLoginStatus();
+  }, []);
+  
+  const checkLoginStatus = async () => {
+    try {
+      const profile = await Profile.getCurrentProfile();
+      
+      if (profile) {
+        setUser(profile);
+        
+        // Check which login type
+        if (Platform.OS === 'ios') {
+          const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+          
+          if (authToken) {
+            setLoginType('limited');
+            setTokenInfo({
+              type: 'Authentication Token',
+              token: authToken.authenticationToken.substring(0, 20) + '...',
+              nonce: authToken.nonce,
+              graphDomain: authToken.graphDomain,
+            });
+          } else {
+            const accessToken = await AccessToken.getCurrentAccessToken();
+            if (accessToken) {
+              setLoginType('traditional');
+              setTokenInfo({
+                type: 'Access Token',
+                token: accessToken.accessToken.substring(0, 20) + '...',
+                userId: accessToken.userID,
+              });
+            }
+          }
+        } else {
+          const accessToken = await AccessToken.getCurrentAccessToken();
+          if (accessToken) {
+            setLoginType('traditional');
+            setTokenInfo({
+              type: 'Access Token',
+              token: accessToken.accessToken.substring(0, 20) + '...',
+              userId: accessToken.userID,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking login status:', error);
+    }
+  };
+  
+  const handleLogin = async () => {
+    try {
+      const result = await LoginManager.logInWithPermissions(
+        ['public_profile', 'email'],
+        Platform.OS === 'ios' ? 'limited' : undefined
+      );
+      
+      if (result.isCancelled) {
+        return;
+      }
+      
+      await checkLoginStatus();
+      
+      // If using Limited Login, verify token on server
+      if (Platform.OS === 'ios') {
+        const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+        if (authToken) {
+          await verifyTokenOnServer(authToken);
+        }
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+      Alert.alert('Login Failed', error.message);
+    }
+  };
+  
+  const verifyTokenOnServer = async (authToken) => {
+    try {
+      const response = await fetch('https://your-api.com/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: authToken.authenticationToken,
+          nonce: authToken.nonce,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.valid) {
+        console.log('Token verified successfully');
+        Alert.alert('Success', 'Login verified!');
+      } else {
+        throw new Error('Invalid token');
+      }
+    } catch (error) {
+      console.error('Token verification failed:', error);
+      Alert.alert('Error', 'Token verification failed');
+    }
+  };
+  
+  const handleLogout = () => {
+    LoginManager.logOut();
+    setUser(null);
+    setLoginType(null);
+    setTokenInfo(null);
+  };
+  
+  return (
+    <View style={styles.container}>
+      {user ? (
+        <>
+          <Text style={styles.title}>Welcome, {user.name}!</Text>
+          <Text style={styles.subtitle}>User ID: {user.userID}</Text>
+          
+          <View style={styles.infoBox}>
+            <Text style={styles.infoTitle}>Login Information</Text>
+            <Text style={styles.infoText}>
+              Type: {loginType === 'limited' ? 'Limited Login' : 'Traditional Login'}
+            </Text>
+            {loginType === 'limited' && Platform.OS === 'ios' && (
+              <Text style={styles.warningText}>
+                ⚠️ Limited features available - Graph API not accessible
+              </Text>
+            )}
+          </View>
+          
+          {tokenInfo && (
+            <View style={styles.tokenBox}>
+              <Text style={styles.tokenTitle}>Token Info</Text>
+              <Text style={styles.tokenText}>Type: {tokenInfo.type}</Text>
+              <Text style={styles.tokenText}>Token: {tokenInfo.token}</Text>
+              {tokenInfo.nonce && (
+                <Text style={styles.tokenText}>Nonce: {tokenInfo.nonce}</Text>
+              )}
+              {tokenInfo.graphDomain && (
+                <Text style={styles.tokenText}>
+                  Domain: {tokenInfo.graphDomain}
+                </Text>
+              )}
+            </View>
+          )}
+          
+          <Button title="Logout" onPress={handleLogout} />
+        </>
+      ) : (
+        <>
+          <Text style={styles.title}>Facebook Login Example</Text>
+          <Text style={styles.description}>
+            This example demonstrates iOS Limited Login.
+            {Platform.OS === 'ios'
+              ? ' Limited Login will be used automatically if ATT is denied.'
+              : ' Android always uses traditional login.'}
+          </Text>
+          <Button title="Login with Facebook" onPress={handleLogin} />
+        </>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  description: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  infoBox: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  infoText: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#ff9800',
+    marginTop: 10,
+  },
+  tokenBox: {
+    backgroundColor: '#e3f2fd',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  tokenTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  tokenText: {
+    fontSize: 12,
+    fontFamily: 'monospace',
+    marginBottom: 5,
+  },
+});
+
+export default LimitedLoginExample;
+```
+
+## Limitations
+
+<Warning>
+**Important Limitations of Authentication Tokens:**
+
+1. **Cannot access Graph API** - Authentication Tokens cannot be used to make Graph API requests
+2. **iOS only** - This feature is not available on Android
+3. **Limited user data** - You can only get basic profile information through the Profile API
+4. **Server validation required** - Tokens must be validated on your backend
+5. **No permission scopes** - Cannot request extended permissions like `user_photos`, `user_posts`, etc.
+</Warning>
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Limited Login" icon="user-shield" href="/concepts/limited-login">
+    Learn about iOS Limited Login
+  </Card>
+  
+  <Card title="AccessToken" icon="key" href="/api/access-token">
+    Traditional login access tokens
+  </Card>
+  
+  <Card title="Authentication Concepts" icon="shield-check" href="/concepts/authentication">
+    Understand authentication in React Native FBSDK
+  </Card>
+  
+  <Card title="Login Methods" icon="right-to-bracket" href="/concepts/login-methods">
+    Different ways to implement Facebook Login
+  </Card>
+</CardGroup>

@@ -1,0 +1,223 @@
+---
+title: AEMReporter
+description: Aggregated Event Measurement for iOS 14.5+ privacy compliance
+icon: apple
+---
+
+The `AEMReporter` module enables Aggregated Event Measurement (AEM) for iOS apps, allowing measurement of app events from iOS 14.5+ users who have opted out of app tracking.
+
+<Note>
+AEM is **iOS only** and automatically bypassed on Android. This feature is designed to work with Apple's App Tracking Transparency (ATT) framework.
+</Note>
+
+## Import
+
+```typescript
+import { AEMReporter } from 'react-native-fbsdk-next';
+```
+
+## What is AEM?
+
+Aggregated Event Measurement allows you to measure app install and app event conversion data from iOS users who have opted out of tracking in iOS 14.5 and later. AEM provides privacy-safe measurement by:
+
+- Aggregating conversion data before sending it to Facebook
+- Operating without user-level identifiers
+- Supporting up to 8 conversion values per campaign
+
+Learn more in the [Facebook AEM documentation](https://developers.facebook.com/docs/app-events/guides/aggregated-event-measurement/).
+
+## Methods
+
+### logAEMEvent
+
+Logs an event for Aggregated Event Measurement. This method automatically handles platform detection and only executes on iOS.
+
+```typescript
+AEMReporter.logAEMEvent(
+  eventName: string,
+  value: number,
+  currency?: string,
+  otherParameters?: Record<string, string | number>
+): void
+```
+
+<ParamField path="eventName" type="string" required>
+  The name of the event to log. **Must match event names used in standard app event logging** for proper attribution.
+</ParamField>
+
+<ParamField path="value" type="number" required>
+  The value associated with the event (e.g., purchase amount, item count).
+</ParamField>
+
+<ParamField path="currency" type="string">
+  The ISO 4217 currency code (e.g., "USD", "EUR", "GBP"). Required for purchase events.
+</ParamField>
+
+<ParamField path="otherParameters" type="Record<string, string | number>">
+  Additional event parameters as key-value pairs.
+</ParamField>
+
+## Usage Examples
+
+### Basic Event
+
+```typescript
+import { AEMReporter } from 'react-native-fbsdk-next';
+
+// Log a simple event (iOS only, no-op on Android)
+AEMReporter.logAEMEvent('ViewedContent', 1);
+```
+
+### Purchase Event
+
+```typescript
+// Log a purchase with currency
+AEMReporter.logAEMEvent('Purchase', 29.99, 'USD');
+```
+
+### Event with Additional Parameters
+
+```typescript
+// Log an event with extra data
+AEMReporter.logAEMEvent(
+  'AddToCart',
+  49.99,
+  'USD',
+  {
+    content_type: 'product',
+    content_id: 'SKU-12345',
+    num_items: 2,
+  }
+);
+```
+
+### Combined with Standard Event Logging
+
+```typescript
+import { AppEventsLogger, AEMReporter } from 'react-native-fbsdk-next';
+
+const logPurchase = (amount: number, currency: string) => {
+  // Standard event logging
+  AppEventsLogger.logPurchase(amount, currency);
+  
+  // AEM event logging (iOS only)
+  AEMReporter.logAEMEvent('Purchase', amount, currency);
+};
+
+logPurchase(99.99, 'USD');
+```
+
+## Platform Handling
+
+The AEM reporter automatically handles platform detection:
+
+```typescript
+// This is safe to call on any platform
+// It will only execute on iOS
+AEMReporter.logAEMEvent('Purchase', 29.99, 'USD');
+
+// Internally, the SDK checks:
+// if (Platform.OS !== 'ios') {
+//   return; // No-op on Android
+// }
+```
+
+You don't need to wrap calls in platform checks, but you can if you prefer:
+
+```typescript
+import { Platform } from 'react-native';
+
+if (Platform.OS === 'ios') {
+  AEMReporter.logAEMEvent('Purchase', 29.99, 'USD');
+}
+```
+
+## Deep Link Handling
+
+<Warning>
+For AEM to work correctly, you **must** handle deep link URLs with AEM data.
+</Warning>
+
+When users click on Facebook ads, deep link URLs may contain AEM attribution data. Your app needs to process these URLs:
+
+```typescript
+import { Linking } from 'react-native';
+import { AEMReporter } from 'react-native-fbsdk-next';
+
+// Handle initial URL when app launches
+Linking.getInitialURL().then((url) => {
+  if (url) {
+    // Process the URL - the SDK will extract AEM data automatically
+    console.log('Initial URL:', url);
+  }
+});
+
+// Handle URLs when app is already running
+Linking.addEventListener('url', (event) => {
+  console.log('Received URL:', event.url);
+  // Process the URL - the SDK will extract AEM data automatically
+});
+```
+
+## Event Name Consistency
+
+<Note>
+AEM event names **must exactly match** the event names used in your standard app event logging for proper attribution and measurement.
+</Note>
+
+**Good - Consistent naming:**
+
+```typescript
+const EVENT_NAME = 'Purchase';
+
+// Standard logging
+AppEventsLogger.logEvent(EVENT_NAME, 99.99);
+
+// AEM logging (same name)
+AEMReporter.logAEMEvent(EVENT_NAME, 99.99, 'USD');
+```
+
+**Bad - Inconsistent naming:**
+
+```typescript
+// Standard logging
+AppEventsLogger.logEvent('Purchase', 99.99);
+
+// AEM logging (different name - won't match!)
+AEMReporter.logAEMEvent('fb_mobile_purchase', 99.99, 'USD');
+```
+
+## Configuration Requirements
+
+To use AEM effectively:
+
+1. **Configure your ad campaigns** in Facebook Events Manager with the events you want to measure
+2. **Set up conversion values** for up to 8 events per campaign
+3. **Handle deep links** in your app to capture attribution data
+4. **Log events consistently** using both standard and AEM logging
+
+## Best Practices
+
+1. **Always log both standard and AEM events** to ensure complete measurement across all user types
+2. **Use consistent event names** between standard and AEM logging
+3. **Include currency** for all purchase-related events
+4. **Test deep link handling** before releasing to production
+5. **Monitor your Events Manager** to verify AEM data is being received
+
+## TypeScript Types
+
+```typescript
+// Method signature
+logAEMEvent: (
+  eventName: string,
+  value: number,
+  currency?: string,
+  otherParameters?: Record<string, string | number>
+) => void;
+```
+
+## Additional Resources
+
+- [Facebook AEM Documentation](https://developers.facebook.com/docs/app-events/guides/aggregated-event-measurement/)
+- [iOS 14.5+ Privacy Changes](https://developers.facebook.com/docs/app-events/guides/ios-14/)
+- [App Tracking Transparency Guide](https://developer.apple.com/documentation/apptrackingtransparency)

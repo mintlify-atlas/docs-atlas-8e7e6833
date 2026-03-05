@@ -1,0 +1,521 @@
+---
+title: AppEventsLogger
+description: Log events and track user actions in your app
+---
+
+The `AppEventsLogger` module allows you to log app events for analytics, track purchases, and manage user data for Facebook's event tracking system.
+
+## Import
+
+```typescript
+import { AppEventsLogger } from 'react-native-fbsdk-next';
+```
+
+## Methods
+
+### logEvent
+
+Logs a custom app event with optional parameters and value.
+
+```typescript
+AppEventsLogger.logEvent(eventName: string, ...args: Array<number | Params>): void
+```
+
+<ParamField path="eventName" type="string" required>
+  The name of the event to log. Use predefined events from `AppEventsLogger.AppEvents` or custom event names.
+</ParamField>
+
+<ParamField path="valueToSum" type="number">
+  Optional numeric value to associate with the event for aggregation.
+</ParamField>
+
+<ParamField path="parameters" type="Params">
+  Optional key-value pairs containing additional event data. Use predefined parameter keys from `AppEventsLogger.AppEventParams`.
+</ParamField>
+
+**Usage Examples:**
+
+```typescript
+// Simple event
+AppEventsLogger.logEvent('Clicked Button');
+
+// Event with value
+AppEventsLogger.logEvent('Viewed Item', 99.99);
+
+// Event with parameters
+AppEventsLogger.logEvent('Viewed Content', {
+  [AppEventsLogger.AppEventParams.ContentType]: 'product',
+  [AppEventsLogger.AppEventParams.ContentID]: 'SKU123',
+});
+
+// Event with value and parameters
+AppEventsLogger.logEvent('Added to Cart', 49.99, {
+  [AppEventsLogger.AppEventParams.Currency]: 'USD',
+  [AppEventsLogger.AppEventParams.NumItems]: 1,
+});
+```
+
+### logPurchase
+
+Logs a purchase event with amount and currency.
+
+```typescript
+AppEventsLogger.logPurchase(
+  purchaseAmount: number,
+  currencyCode: string,
+  parameters?: Params
+): void
+```
+
+<ParamField path="purchaseAmount" type="number" required>
+  The amount of the purchase.
+</ParamField>
+
+<ParamField path="currencyCode" type="string" required>
+  The ISO 4217 currency code (e.g., "USD", "EUR", "GBP").
+</ParamField>
+
+<ParamField path="parameters" type="Params">
+  Optional additional parameters for the purchase event.
+</ParamField>
+
+**Example:**
+
+```typescript
+AppEventsLogger.logPurchase(29.99, 'USD', {
+  [AppEventsLogger.AppEventParams.NumItems]: 2,
+  [AppEventsLogger.AppEventParams.ContentType]: 'product',
+});
+```
+
+### logPushNotificationOpen
+
+Logs that the app was opened via a push notification.
+
+```typescript
+AppEventsLogger.logPushNotificationOpen(payload?: Record<string, string | number>): void
+```
+
+<ParamField path="payload" type="Record<string, string | number>">
+  Optional payload data from the push notification.
+</ParamField>
+
+**Example:**
+
+```typescript
+AppEventsLogger.logPushNotificationOpen({
+  campaign: 'summer_sale',
+  source: 'firebase',
+});
+```
+
+### logProductItem
+
+Uploads a product catalog item as an app event.
+
+```typescript
+AppEventsLogger.logProductItem(
+  itemID: string,
+  availability: ProductAvailability,
+  condition: ProductCondition,
+  description: string,
+  imageLink: string,
+  link: string,
+  title: string,
+  priceAmount: number,
+  currency: string,
+  gtin?: string,
+  mpn?: string,
+  brand?: string,
+  parameters?: Params
+): void
+```
+
+<ParamField path="itemID" type="string" required>
+  Unique identifier for the product. Maximum 100 characters.
+</ParamField>
+
+<ParamField path="availability" type="ProductAvailability" required>
+  Product availability: `'in_stock'`, `'out_of_stock'`, `'preorder'`, `'avaliable_for_order'`, or `'discontinued'`.
+</ParamField>
+
+<ParamField path="condition" type="ProductCondition" required>
+  Product condition: `'new'`, `'refurbished'`, or `'used'`.
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  Product description. Maximum 5000 characters.
+</ParamField>
+
+<ParamField path="imageLink" type="string" required>
+  URL to the product image.
+</ParamField>
+
+<ParamField path="link" type="string" required>
+  URL to the product page on your website.
+</ParamField>
+
+<ParamField path="title" type="string" required>
+  Product title.
+</ParamField>
+
+<ParamField path="priceAmount" type="number" required>
+  Product price (rounded to thousandths place).
+</ParamField>
+
+<ParamField path="currency" type="string" required>
+  ISO 4217 currency code.
+</ParamField>
+
+<ParamField path="gtin" type="string">
+  Global Trade Item Number (UPC, EAN, JAN, ISBN).
+</ParamField>
+
+<ParamField path="mpn" type="string">
+  Manufacturer Part Number.
+</ParamField>
+
+<ParamField path="brand" type="string">
+  Brand name.
+</ParamField>
+
+<ParamField path="parameters" type="Params">
+  Additional parameters for deep linking.
+</ParamField>
+
+<Note>At least one of `gtin`, `mpn`, or `brand` must be provided.</Note>
+
+**Example:**
+
+```typescript
+AppEventsLogger.logProductItem(
+  'SKU-12345',
+  'in_stock',
+  'new',
+  'Premium Wireless Headphones with Noise Cancellation',
+  'https://example.com/images/headphones.jpg',
+  'https://example.com/products/headphones',
+  'Premium Headphones',
+  149.99,
+  'USD',
+  undefined,
+  undefined,
+  'AudioBrand'
+);
+```
+
+### setUserID
+
+Sets a custom user ID to associate with all app events.
+
+```typescript
+AppEventsLogger.setUserID(userID: string | null): void
+```
+
+<ParamField path="userID" type="string | null" required>
+  The user ID to set, or `null` to clear the current user ID.
+</ParamField>
+
+**Example:**
+
+```typescript
+// Set user ID
+AppEventsLogger.setUserID('user_12345');
+
+// Clear user ID
+AppEventsLogger.setUserID(null);
+```
+
+### getUserID
+
+Returns the currently set user ID.
+
+```typescript
+AppEventsLogger.getUserID(): Promise<string | null>
+```
+
+**Example:**
+
+```typescript
+const userID = await AppEventsLogger.getUserID();
+console.log('Current user ID:', userID);
+```
+
+### getAnonymousID
+
+Returns the anonymous ID for the current app installation.
+
+```typescript
+AppEventsLogger.getAnonymousID(): Promise<string | null>
+```
+
+**Example:**
+
+```typescript
+const anonymousID = await AppEventsLogger.getAnonymousID();
+```
+
+### getAdvertiserID
+
+Returns the advertiser ID (IDFA on iOS, Advertising ID on Android).
+
+```typescript
+AppEventsLogger.getAdvertiserID(): Promise<string | null>
+```
+
+**Example:**
+
+```typescript
+const advertiserID = await AppEventsLogger.getAdvertiserID();
+```
+
+### getAttributionID
+
+Returns the attribution ID. **Android only.**
+
+```typescript
+AppEventsLogger.getAttributionID(): Promise<string | null>
+```
+
+<Note>This method returns `null` on iOS.</Note>
+
+**Example:**
+
+```typescript
+if (Platform.OS === 'android') {
+  const attributionID = await AppEventsLogger.getAttributionID();
+}
+```
+
+### setUserData
+
+Sets additional user data to improve ad targeting and measurement.
+
+```typescript
+AppEventsLogger.setUserData(userData: UserData): void
+```
+
+<ParamField path="userData" type="UserData" required>
+  User information for advanced matching. See [Advanced Matching](https://developers.facebook.com/docs/app-events/advanced-matching) for field format details.
+</ParamField>
+
+**Example:**
+
+```typescript
+AppEventsLogger.setUserData({
+  email: 'user@example.com',
+  firstName: 'John',
+  lastName: 'Doe',
+  phone: '+1234567890',
+  city: 'San Francisco',
+  state: 'CA',
+  zip: '94103',
+  country: 'US',
+});
+```
+
+### setFlushBehavior
+
+Controls when events are sent to Facebook servers.
+
+```typescript
+AppEventsLogger.setFlushBehavior(flushBehavior: AppEventsFlushBehavior): void
+```
+
+<ParamField path="flushBehavior" type="AppEventsFlushBehavior" required>
+  Either `'auto'` (default: flush every 15 seconds or 100 events) or `'explicit_only'` (only flush when `flush()` is called).
+</ParamField>
+
+**Example:**
+
+```typescript
+// Explicit flushing only
+AppEventsLogger.setFlushBehavior('explicit_only');
+```
+
+### flush
+
+Manually triggers sending queued events to Facebook servers.
+
+```typescript
+AppEventsLogger.flush(): void
+```
+
+**Example:**
+
+```typescript
+AppEventsLogger.flush();
+```
+
+### setPushNotificationsDeviceToken
+
+Registers the device token for push notifications. **iOS only.**
+
+```typescript
+AppEventsLogger.setPushNotificationsDeviceToken(deviceToken: string): void
+```
+
+<ParamField path="deviceToken" type="string" required>
+  The APNs device token.
+</ParamField>
+
+**Example:**
+
+```typescript
+if (Platform.OS === 'ios') {
+  AppEventsLogger.setPushNotificationsDeviceToken(deviceToken);
+}
+```
+
+### setPushNotificationsRegistrationId
+
+Registers the registration ID for push notifications. **Android only.**
+
+```typescript
+AppEventsLogger.setPushNotificationsRegistrationId(registrationId: string): void
+```
+
+<ParamField path="registrationId" type="string" required>
+  The FCM registration ID.
+</ParamField>
+
+**Example:**
+
+```typescript
+if (Platform.OS === 'android') {
+  AppEventsLogger.setPushNotificationsRegistrationId(registrationId);
+}
+```
+
+### clearUserID
+
+<Warning>Deprecated. Use `setUserID(null)` instead.</Warning>
+
+Clears the currently set user ID.
+
+```typescript
+AppEventsLogger.clearUserID(): void
+```
+
+## Constants
+
+### AppEvents
+
+Predefined event names for common app actions:
+
+```typescript
+const AppEvents: {
+  AchievedLevel: string;
+  AdClick: string;
+  AdImpression: string;
+  AddedPaymentInfo: string;
+  AddedToCart: string;
+  AddedToWishlist: string;
+  CompletedRegistration: string;
+  CompletedTutorial: string;
+  Contact: string;
+  CustomizeProduct: string;
+  Donate: string;
+  FindLocation: string;
+  InitiatedCheckout: string;
+  Purchased: string;
+  Rated: string;
+  Searched: string;
+  SpentCredits: string;
+  Schedule: string;
+  StartTrial: string;
+  SubmitApplication: string;
+  Subscribe: string;
+  UnlockedAchievement: string;
+  ViewedContent: string;
+}
+```
+
+**Example:**
+
+```typescript
+AppEventsLogger.logEvent(AppEventsLogger.AppEvents.CompletedRegistration);
+```
+
+### AppEventParams
+
+Predefined parameter keys for event data:
+
+```typescript
+const AppEventParams: {
+  AddType: string;
+  Content: string;
+  ContentID: string;
+  ContentType: string;
+  Currency: string;
+  Description: string;
+  Level: string;
+  NumItems: string;
+  MaxRatingValue: string;
+  OrderId: string;
+  PaymentInfoAvailable: string;
+  RegistrationMethod: string;
+  SearchString: string;
+  Success: string;
+  ValueNo: string;
+  ValueYes: string;
+}
+```
+
+**Example:**
+
+```typescript
+AppEventsLogger.logEvent(AppEventsLogger.AppEvents.ViewedContent, {
+  [AppEventsLogger.AppEventParams.ContentType]: 'product',
+  [AppEventsLogger.AppEventParams.ContentID]: 'SKU123',
+  [AppEventsLogger.AppEventParams.Currency]: 'USD',
+});
+```
+
+## TypeScript Types
+
+### Params
+
+```typescript
+type Params = { [key: string]: string | number };
+```
+
+### UserData
+
+```typescript
+type UserData = Readonly<{
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: 'm' | 'f';
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+}>;
+```
+
+### AppEventsFlushBehavior
+
+```typescript
+type AppEventsFlushBehavior = 'auto' | 'explicit_only';
+```
+
+### ProductAvailability
+
+```typescript
+type ProductAvailability =
+  | 'in_stock'
+  | 'out_of_stock'
+  | 'preorder'
+  | 'avaliable_for_order'
+  | 'discontinued';
+```
+
+### ProductCondition
+
+```typescript
+type ProductCondition = 'new' | 'refurbished' | 'used';
+```

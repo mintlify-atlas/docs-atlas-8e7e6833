@@ -1,0 +1,679 @@
+---
+title: Graph API
+description: Make requests to Facebook's Graph API from your React Native app
+---
+
+The Facebook Graph API is the primary way to read and write data to Facebook's social graph. This guide shows you how to make Graph API requests using React Native FBSDK Next.
+
+<Warning>
+  Graph API requests **cannot** be made with a [Limited Login](/concepts/limited-login) Authentication Token on iOS. You must use an Access Token from traditional login.
+</Warning>
+
+## Prerequisites
+
+Before making Graph API requests:
+
+1. User must be logged in with traditional Facebook Login
+2. You must have a valid Access Token
+3. User must have granted appropriate permissions
+
+```javascript
+import { AccessToken } from 'react-native-fbsdk-next';
+
+// Check if we have a valid access token
+const token = await AccessToken.getCurrentAccessToken();
+if (!token) {
+  console.log('User not logged in');
+  return;
+}
+
+console.log('Ready to make Graph API requests');
+```
+
+## Making Graph Requests
+
+### Basic Request
+
+Use `GraphRequest` and `GraphRequestManager` to make API calls:
+
+```javascript
+import { GraphRequest, GraphRequestManager } from 'react-native-fbsdk-next';
+
+function fetchUserData() {
+  // Create a callback to handle the response
+  const callback = (error, result) => {
+    if (error) {
+      console.log('Error fetching data:', error);
+    } else {
+      console.log('Success:', result);
+    }
+  };
+  
+  // Create the request
+  const infoRequest = new GraphRequest(
+    '/me', // Graph API endpoint
+    null,  // Config (optional)
+    callback
+  );
+  
+  // Execute the request
+  new GraphRequestManager().addRequest(infoRequest).start();
+}
+```
+
+### Request with Parameters
+
+Add parameters to customize the request:
+
+```javascript
+import { GraphRequest, GraphRequestManager } from 'react-native-fbsdk-next';
+
+function fetchUserProfile() {
+  const callback = (error, result) => {
+    if (error) {
+      console.error('Error:', error);
+    } else {
+      console.log('User data:', result);
+      console.log('Name:', result.name);
+      console.log('Email:', result.email);
+    }
+  };
+  
+  const request = new GraphRequest(
+    '/me',
+    {
+      parameters: {
+        fields: {
+          string: 'id,name,email,picture.type(large)',
+        },
+      },
+    },
+    callback
+  );
+  
+  new GraphRequestManager().addRequest(request).start();
+}
+```
+
+### Using Async/Await
+
+Wrap Graph requests in a Promise for cleaner code:
+
+```javascript
+import { GraphRequest, GraphRequestManager } from 'react-native-fbsdk-next';
+
+function makeGraphRequest(path, config = {}) {
+  return new Promise((resolve, reject) => {
+    const callback = (error, result) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result);
+      }
+    };
+    
+    const request = new GraphRequest(path, config, callback);
+    new GraphRequestManager().addRequest(request).start();
+  });
+}
+
+// Usage
+async function getUserData() {
+  try {
+    const result = await makeGraphRequest('/me', {
+      parameters: {
+        fields: { string: 'id,name,email,picture' },
+      },
+    });
+    
+    console.log('User:', result.name);
+    console.log('Email:', result.email);
+    return result;
+  } catch (error) {
+    console.error('Failed to fetch user data:', error);
+  }
+}
+```
+
+## Common Graph API Endpoints
+
+### Get User Profile
+
+```javascript
+const result = await makeGraphRequest('/me', {
+  parameters: {
+    fields: { string: 'id,name,email,first_name,last_name,picture.type(large)' },
+  },
+});
+
+console.log('Name:', result.name);
+console.log('Email:', result.email);
+console.log('Picture URL:', result.picture.data.url);
+```
+
+### Get User's Friends
+
+```javascript
+// Requires 'user_friends' permission
+const result = await makeGraphRequest('/me/friends', {
+  parameters: {
+    fields: { string: 'id,name,picture' },
+  },
+});
+
+console.log('Friends:', result.data);
+result.data.forEach(friend => {
+  console.log(`- ${friend.name}`);
+});
+```
+
+### Get User's Photos
+
+```javascript
+// Requires 'user_photos' permission
+const result = await makeGraphRequest('/me/photos', {
+  parameters: {
+    fields: { string: 'id,name,picture,created_time' },
+  },
+});
+
+console.log('Photos:', result.data);
+```
+
+### Get User's Posts
+
+```javascript
+// Requires 'user_posts' permission
+const result = await makeGraphRequest('/me/posts', {
+  parameters: {
+    fields: { string: 'id,message,created_time,full_picture' },
+    limit: { string: '10' },
+  },
+});
+
+console.log('Recent posts:', result.data);
+```
+
+## Request Configuration
+
+### HTTP Methods
+
+Specify the HTTP method for your request:
+
+```javascript
+const request = new GraphRequest(
+  '/me/feed',
+  {
+    httpMethod: 'POST', // GET, POST, DELETE, etc.
+    parameters: {
+      message: { string: 'Posted from my React Native app!' },
+    },
+  },
+  callback
+);
+```
+
+### API Version
+
+Specify a Graph API version:
+
+```javascript
+const request = new GraphRequest(
+  '/me',
+  {
+    version: 'v18.0', // Use specific API version
+    parameters: {
+      fields: { string: 'id,name' },
+    },
+  },
+  callback
+);
+```
+
+### Custom Access Token
+
+Use a specific access token:
+
+```javascript
+const request = new GraphRequest(
+  '/me',
+  {
+    accessToken: 'your_access_token_here',
+    parameters: {
+      fields: { string: 'id,name' },
+    },
+  },
+  callback
+);
+```
+
+## Batch Requests
+
+Make multiple Graph API requests in a single network call:
+
+```javascript
+import { GraphRequest, GraphRequestManager } from 'react-native-fbsdk-next';
+
+function fetchMultipleData() {
+  const profileCallback = (error, result) => {
+    if (!error) {
+      console.log('Profile:', result);
+    }
+  };
+  
+  const friendsCallback = (error, result) => {
+    if (!error) {
+      console.log('Friends:', result);
+    }
+  };
+  
+  const photosCallback = (error, result) => {
+    if (!error) {
+      console.log('Photos:', result);
+    }
+  };
+  
+  // Create multiple requests
+  const profileRequest = new GraphRequest(
+    '/me',
+    { parameters: { fields: { string: 'id,name,email' } } },
+    profileCallback
+  );
+  
+  const friendsRequest = new GraphRequest(
+    '/me/friends',
+    null,
+    friendsCallback
+  );
+  
+  const photosRequest = new GraphRequest(
+    '/me/photos',
+    { parameters: { limit: { string: '5' } } },
+    photosCallback
+  );
+  
+  // Execute all requests in batch
+  new GraphRequestManager()
+    .addRequest(profileRequest)
+    .addRequest(friendsRequest)
+    .addRequest(photosRequest)
+    .start();
+}
+```
+
+## Pagination
+
+Handle paginated results:
+
+```javascript
+async function fetchAllFriends() {
+  let allFriends = [];
+  let nextUrl = '/me/friends';
+  
+  while (nextUrl) {
+    const result = await makeGraphRequest(nextUrl, {
+      parameters: {
+        fields: { string: 'id,name' },
+        limit: { string: '100' },
+      },
+    });
+    
+    allFriends = allFriends.concat(result.data);
+    
+    // Check for next page
+    nextUrl = result.paging?.next ? result.paging.next : null;
+    
+    console.log(`Fetched ${allFriends.length} friends so far...`);
+  }
+  
+  console.log(`Total friends: ${allFriends.length}`);
+  return allFriends;
+}
+```
+
+## Error Handling
+
+### Common Errors
+
+```javascript
+async function handleGraphRequest() {
+  try {
+    const result = await makeGraphRequest('/me/photos');
+    return result;
+  } catch (error) {
+    // Parse Facebook error
+    if (error.message) {
+      console.error('Error message:', error.message);
+    }
+    
+    if (error.code) {
+      switch (error.code) {
+        case 190:
+          console.error('Invalid access token');
+          // Prompt user to re-login
+          break;
+        case 200:
+          console.error('Permission denied');
+          // Request additional permissions
+          break;
+        case 100:
+          console.error('Invalid parameter');
+          break;
+        default:
+          console.error('Unknown error:', error.code);
+      }
+    }
+  }
+}
+```
+
+### Checking Permissions
+
+Verify permissions before making requests:
+
+```javascript
+import { AccessToken, LoginManager } from 'react-native-fbsdk-next';
+
+async function ensurePermission(permission) {
+  const token = await AccessToken.getCurrentAccessToken();
+  
+  if (!token) {
+    throw new Error('User not logged in');
+  }
+  
+  if (!token.permissions.includes(permission)) {
+    console.log(`Requesting ${permission} permission...`);
+    
+    const result = await LoginManager.logInWithPermissions([permission]);
+    
+    if (result.isCancelled || !result.grantedPermissions.includes(permission)) {
+      throw new Error(`Permission ${permission} not granted`);
+    }
+  }
+  
+  return true;
+}
+
+// Usage
+async function getUserPhotos() {
+  await ensurePermission('user_photos');
+  
+  const result = await makeGraphRequest('/me/photos');
+  return result.data;
+}
+```
+
+## Complete Example
+
+Here's a complete example of fetching and displaying user data:
+
+```javascript
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { GraphRequest, GraphRequestManager, AccessToken } from 'react-native-fbsdk-next';
+
+function makeGraphRequest(path, config = {}) {
+  return new Promise((resolve, reject) => {
+    const callback = (error, result) => {
+      if (error) reject(error);
+      else resolve(result);
+    };
+    const request = new GraphRequest(path, config, callback);
+    new GraphRequestManager().addRequest(request).start();
+  });
+}
+
+function UserProfileScreen() {
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+  
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check if user is logged in
+      const token = await AccessToken.getCurrentAccessToken();
+      if (!token) {
+        setError('Not logged in');
+        return;
+      }
+      
+      // Fetch user profile
+      const result = await makeGraphRequest('/me', {
+        parameters: {
+          fields: {
+            string: 'id,name,email,picture.type(large),birthday,friends.limit(5){name,picture}',
+          },
+        },
+      });
+      
+      setUserData(result);
+    } catch (err) {
+      console.error('Failed to fetch user data:', err);
+      setError(err.message || 'Failed to fetch data');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+  
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.error}>Error: {error}</Text>
+      </View>
+    );
+  }
+  
+  if (!userData) {
+    return null;
+  }
+  
+  return (
+    <View style={styles.container}>
+      <Image
+        source={{ uri: userData.picture?.data?.url }}
+        style={styles.profilePicture}
+      />
+      <Text style={styles.name}>{userData.name}</Text>
+      {userData.email && <Text style={styles.email}>{userData.email}</Text>}
+      {userData.birthday && <Text>Birthday: {userData.birthday}</Text>}
+      
+      {userData.friends?.data?.length > 0 && (
+        <View style={styles.friendsSection}>
+          <Text style={styles.sectionTitle}>Friends</Text>
+          <FlatList
+            data={userData.friends.data}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.friendItem}>
+                <Image
+                  source={{ uri: item.picture?.data?.url }}
+                  style={styles.friendPicture}
+                />
+                <Text>{item.name}</Text>
+              </View>
+            )}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
+  },
+  profilePicture: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    marginBottom: 20,
+  },
+  name: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  email: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 10,
+  },
+  friendsSection: {
+    marginTop: 30,
+    width: '100%',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  friendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  friendPicture: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  error: {
+    color: 'red',
+    fontSize: 16,
+  },
+});
+
+export default UserProfileScreen;
+```
+
+## Best Practices
+
+### 1. Always Check Token Validity
+
+```javascript
+import { AccessToken } from 'react-native-fbsdk-next';
+
+async function makeAuthenticatedRequest(path, config) {
+  const token = await AccessToken.getCurrentAccessToken();
+  
+  if (!token) {
+    throw new Error('No access token available');
+  }
+  
+  // Check if token is expired
+  if (token.expirationTime < Date.now()) {
+    console.log('Token expired, refreshing...');
+    await AccessToken.refreshCurrentAccessTokenAsync();
+  }
+  
+  return makeGraphRequest(path, config);
+}
+```
+
+### 2. Request Only Needed Fields
+
+Be specific about which fields you need:
+
+```javascript
+// Bad - requests all available fields
+const result = await makeGraphRequest('/me');
+
+// Good - requests only needed fields
+const result = await makeGraphRequest('/me', {
+  parameters: {
+    fields: { string: 'id,name,email' },
+  },
+});
+```
+
+### 3. Cache Responses
+
+Cache Graph API responses to reduce network calls:
+
+```javascript
+const cache = {};
+
+async function cachedGraphRequest(path, config, ttl = 300000) {
+  const cacheKey = `${path}-${JSON.stringify(config)}`;
+  
+  // Check cache
+  if (cache[cacheKey] && cache[cacheKey].expiry > Date.now()) {
+    console.log('Returning cached result');
+    return cache[cacheKey].data;
+  }
+  
+  // Fetch fresh data
+  const result = await makeGraphRequest(path, config);
+  
+  // Store in cache
+  cache[cacheKey] = {
+    data: result,
+    expiry: Date.now() + ttl,
+  };
+  
+  return result;
+}
+```
+
+### 4. Handle Rate Limiting
+
+Facebook limits API calls. Handle rate limit errors:
+
+```javascript
+async function makeRequestWithRetry(path, config, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await makeGraphRequest(path, config);
+    } catch (error) {
+      if (error.code === 4 || error.code === 17) {
+        // Rate limit error
+        const waitTime = Math.pow(2, i) * 1000; // Exponential backoff
+        console.log(`Rate limited. Waiting ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+```
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="shield-check" href="/concepts/authentication">
+    Learn about access tokens and authentication
+  </Card>
+  
+  <Card title="Graph Request API" icon="code" href="/api/graph-request">
+    Complete API reference for GraphRequest
+  </Card>
+  
+  <Card title="Facebook Graph API Docs" icon="book" href="https://developers.facebook.com/docs/graph-api">
+    Official Facebook Graph API documentation
+  </Card>
+  
+  <Card title="Permissions Reference" icon="key" href="https://developers.facebook.com/docs/permissions/reference">
+    Complete list of Facebook permissions
+  </Card>
+</CardGroup>

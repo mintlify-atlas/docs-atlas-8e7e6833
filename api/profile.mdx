@@ -1,0 +1,464 @@
+---
+title: Profile
+description: Access the current user's Facebook profile data
+---
+
+The `Profile` class represents an immutable Facebook user profile with a global `currentProfile` instance for adding social context to your application.
+
+## Import
+
+```typescript
+import { Profile } from 'react-native-fbsdk-next';
+```
+
+## Static Methods
+
+### getCurrentProfile
+
+Retrieves the current logged-in user's profile.
+
+```typescript
+Profile.getCurrentProfile(): Promise<Profile | null>
+```
+
+Returns a Promise that resolves to:
+- A `Profile` instance if a user is logged in
+- `null` if no user is logged in
+
+**Example:**
+
+```typescript
+import { Profile } from 'react-native-fbsdk-next';
+
+const profile = await Profile.getCurrentProfile();
+
+if (profile) {
+  console.log('User ID:', profile.userID);
+  console.log('Name:', profile.name);
+  console.log('Email:', profile.email);
+} else {
+  console.log('No user logged in');
+}
+```
+
+## Instance Properties
+
+All properties are read-only and may be `null` if not available.
+
+### userID
+
+The user's Facebook ID.
+
+```typescript
+userID?: string | null
+```
+
+### name
+
+The user's complete name.
+
+```typescript
+name?: string | null
+```
+
+### firstName
+
+The user's first name.
+
+```typescript
+firstName?: string | null
+```
+
+### lastName
+
+The user's last name.
+
+```typescript
+lastName?: string | null
+```
+
+### middleName
+
+The user's middle name.
+
+```typescript
+middleName?: string | null
+```
+
+### email
+
+The user's email address.
+
+```typescript
+email?: string | null
+```
+
+<Note>
+**iOS only.** This field is only populated if the user granted the `email` permission. Not available on Android.
+</Note>
+
+### imageURL
+
+URL to the user's profile image.
+
+```typescript
+imageURL?: string | null
+```
+
+### linkURL
+
+URL to the user's Facebook profile.
+
+```typescript
+linkURL?: string | null
+```
+
+<Note>
+This field is only populated if the user granted the `user_link` permission.
+</Note>
+
+### refreshDate
+
+The last time the profile data was fetched.
+
+```typescript
+refreshDate?: Date | null
+```
+
+### friendIDs
+
+Array of the user's friend IDs.
+
+```typescript
+friendIDs?: Array<string> | null
+```
+
+<Note>
+**iOS Limited Login only.** This field is only populated if the user granted the `user_friends` permission and is using Limited Login on iOS.
+</Note>
+
+### birthday
+
+The user's birthday.
+
+```typescript
+birthday?: Date | null
+```
+
+<Note>
+**iOS Limited Login only.** This field is only populated if the user granted the `user_birthday` permission and is using Limited Login on iOS.
+</Note>
+
+### ageRange
+
+The user's age range.
+
+```typescript
+ageRange?: { min: number; max: number } | null
+```
+
+<Note>
+**iOS Limited Login only.** This field is only populated if the user granted the `user_age_range` permission and is using Limited Login on iOS.
+</Note>
+
+**Example:**
+
+```typescript
+if (profile?.ageRange) {
+  console.log(`Age range: ${profile.ageRange.min}-${profile.ageRange.max}`);
+}
+```
+
+### hometown
+
+The user's hometown.
+
+```typescript
+hometown?: { id: string; name: string } | null
+```
+
+<Note>
+**iOS Limited Login only.** This field is only populated if the user granted the `user_hometown` permission and is using Limited Login on iOS.
+</Note>
+
+**Example:**
+
+```typescript
+if (profile?.hometown) {
+  console.log(`Hometown: ${profile.hometown.name} (${profile.hometown.id})`);
+}
+```
+
+### location
+
+The user's current location.
+
+```typescript
+location?: { id: string; name: string } | null
+```
+
+<Note>
+**iOS Limited Login only.** This field is only populated if the user granted the `user_location` permission and is using Limited Login on iOS.
+</Note>
+
+**Example:**
+
+```typescript
+if (profile?.location) {
+  console.log(`Location: ${profile.location.name} (${profile.location.id})`);
+}
+```
+
+### gender
+
+The user's gender.
+
+```typescript
+gender?: string | null
+```
+
+<Note>
+**iOS Limited Login only.** This field is only populated if the user granted the `user_gender` permission and is using Limited Login on iOS.
+</Note>
+
+### permissions
+
+Array of permissions the user has granted.
+
+```typescript
+permissions?: Array<string> | null
+```
+
+## Usage Examples
+
+### Display User Profile
+
+```typescript
+import React, { useEffect, useState } from 'react';
+import { View, Text, Image } from 'react-native';
+import { Profile } from 'react-native-fbsdk-next';
+
+const UserProfile = () => {
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const currentProfile = await Profile.getCurrentProfile();
+      setProfile(currentProfile);
+    };
+    loadProfile();
+  }, []);
+
+  if (!profile) {
+    return <Text>Loading profile...</Text>;
+  }
+
+  return (
+    <View>
+      {profile.imageURL && (
+        <Image
+          source={{ uri: profile.imageURL }}
+          style={{ width: 100, height: 100, borderRadius: 50 }}
+        />
+      )}
+      <Text>Name: {profile.name}</Text>
+      <Text>User ID: {profile.userID}</Text>
+      {profile.email && <Text>Email: {profile.email}</Text>}
+    </View>
+  );
+};
+```
+
+### Check if User is Logged In
+
+```typescript
+import { Profile } from 'react-native-fbsdk-next';
+
+const checkLoginStatus = async () => {
+  const profile = await Profile.getCurrentProfile();
+  
+  if (profile) {
+    console.log('User is logged in:', profile.name);
+    return true;
+  } else {
+    console.log('No user logged in');
+    return false;
+  }
+};
+```
+
+### Access Extended Profile Data (iOS Limited Login)
+
+```typescript
+import { Profile } from 'react-native-fbsdk-next';
+import { Platform } from 'react-native';
+
+const displayExtendedProfile = async () => {
+  const profile = await Profile.getCurrentProfile();
+  
+  if (!profile) {
+    console.log('No profile available');
+    return;
+  }
+
+  console.log('Basic Info:');
+  console.log('- Name:', profile.name);
+  console.log('- User ID:', profile.userID);
+
+  if (Platform.OS === 'ios') {
+    console.log('\nExtended Info (iOS Limited Login):');
+    
+    if (profile.birthday) {
+      console.log('- Birthday:', profile.birthday.toLocaleDateString());
+    }
+    
+    if (profile.ageRange) {
+      console.log('- Age Range:', `${profile.ageRange.min}-${profile.ageRange.max}`);
+    }
+    
+    if (profile.hometown) {
+      console.log('- Hometown:', profile.hometown.name);
+    }
+    
+    if (profile.location) {
+      console.log('- Location:', profile.location.name);
+    }
+    
+    if (profile.gender) {
+      console.log('- Gender:', profile.gender);
+    }
+    
+    if (profile.friendIDs) {
+      console.log('- Friends Count:', profile.friendIDs.length);
+    }
+  }
+
+  if (profile.permissions) {
+    console.log('\nGranted Permissions:');
+    profile.permissions.forEach(perm => console.log('-', perm));
+  }
+};
+```
+
+### Profile Refresh Tracking
+
+```typescript
+import { Profile } from 'react-native-fbsdk-next';
+
+const checkProfileFreshness = async () => {
+  const profile = await Profile.getCurrentProfile();
+  
+  if (profile?.refreshDate) {
+    const now = new Date();
+    const timeSinceRefresh = now.getTime() - profile.refreshDate.getTime();
+    const hoursSinceRefresh = timeSinceRefresh / (1000 * 60 * 60);
+    
+    console.log(`Profile last refreshed ${hoursSinceRefresh.toFixed(1)} hours ago`);
+    
+    if (hoursSinceRefresh > 24) {
+      console.log('Profile data may be stale');
+      // Consider re-authenticating or fetching fresh data
+    }
+  }
+};
+```
+
+## TypeScript Types
+
+### ProfileMap
+
+Raw profile data object returned from native modules.
+
+```typescript
+type ProfileMap = {
+  firstName?: string | null;
+  lastName?: string | null;
+  middleName?: string | null;
+  imageURL?: string | null;
+  linkURL?: string | null;
+  userID?: string | null;
+  email?: string | null;
+  name?: string | null;
+  refreshDate?: number | null;
+  friendIDs?: Array<string> | null;
+  birthday?: number | null;
+  ageRange?: { min: number; max: number } | null;
+  hometown?: { id: string; name: string } | null;
+  location?: { id: string; name: string } | null;
+  gender?: string | null;
+  permissions?: Array<string> | null;
+};
+```
+
+## Constructor
+
+```typescript
+new Profile(profileMap: ProfileMap)
+```
+
+Creates a new immutable Profile instance from a ProfileMap. The profile object is frozen and cannot be modified after creation.
+
+<Note>
+You typically don't need to construct Profile instances manually. Use `Profile.getCurrentProfile()` instead.
+</Note>
+
+## Permissions Required
+
+To access certain profile fields, users must grant specific permissions:
+
+| Field | Permission Required | Platform |
+|-------|-------------------|----------|
+| `email` | `email` | iOS only |
+| `linkURL` | `user_link` | Both |
+| `friendIDs` | `user_friends` | iOS Limited Login |
+| `birthday` | `user_birthday` | iOS Limited Login |
+| `ageRange` | `user_age_range` | iOS Limited Login |
+| `hometown` | `user_hometown` | iOS Limited Login |
+| `location` | `user_location` | iOS Limited Login |
+| `gender` | `user_gender` | iOS Limited Login |
+
+**Example: Requesting permissions**
+
+```typescript
+import { LoginManager } from 'react-native-fbsdk-next';
+
+const login = async () => {
+  const result = await LoginManager.logInWithPermissions([
+    'public_profile',
+    'email',
+    'user_friends',
+    'user_birthday',
+  ]);
+
+  if (!result.isCancelled) {
+    const profile = await Profile.getCurrentProfile();
+    console.log('Profile with extended data:', profile);
+  }
+};
+```
+
+## Platform Differences
+
+### iOS
+- Full support for all profile fields
+- Extended fields available with Limited Login
+- `email` field populated when permission granted
+
+### Android
+- Basic fields supported
+- `email` field **not available**
+- Extended fields (birthday, ageRange, etc.) **not available**
+
+## Best Practices
+
+1. **Check for null values** before accessing profile properties
+2. **Request minimal permissions** needed for your use case
+3. **Cache profile data** appropriately to minimize API calls
+4. **Handle platform differences** when accessing iOS-only fields
+5. **Respect user privacy** - only request and use data you truly need
+
+## Related
+
+- [LoginManager](/api/login-manager) - Authenticate users and request permissions
+- [AccessToken](/api/access-token) - Manage user access tokens
+- [Facebook Graph API](https://developers.facebook.com/docs/graph-api) - Fetch additional user data

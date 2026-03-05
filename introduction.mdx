@@ -1,0 +1,105 @@
+---
+title: Introduction
+description: Learn about the React Native FBSDK Next SDK and how it enables Facebook integration in your React Native apps
+---
+
+## What is React Native FBSDK Next?
+
+React Native FBSDK Next is a community-maintained wrapper around the iOS Facebook SDK and Android Facebook SDK, enabling seamless Facebook integration in [React Native](https://reactnative.dev/) applications. This project continues the work of the original [React Native FBSDK](https://github.com/facebook/react-native-fbsdk) after Facebook discontinued its official support.
+
+The SDK provides access to native Facebook components through well-documented JavaScript modules, allowing you to implement Facebook features without writing any native code directly.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Facebook Login" icon="right-to-bracket">
+    Implement secure Facebook authentication with customizable login buttons or programmatic login flows
+  </Card>
+  
+  <Card title="Sharing" icon="share-nodes">
+    Enable users to share links, photos, and videos to Facebook with native share dialogs
+  </Card>
+  
+  <Card title="Graph API" icon="diagram-project">
+    Access Facebook's Graph API to retrieve user data, post content, and interact with Facebook's social graph
+  </Card>
+  
+  <Card title="App Events" icon="chart-line">
+    Track user actions and conversions with Facebook Analytics and optimize your marketing campaigns
+  </Card>
+</CardGroup>
+
+## Why Use React Native FBSDK Next?
+
+### Single Package for Both Platforms
+
+No need to install separate packages for iOS and Android. React Native FBSDK Next works seamlessly across both platforms with a unified API.
+
+### Active Community Support
+
+As a community-driven project, React Native FBSDK Next receives regular updates and maintains compatibility with the latest React Native versions and Facebook SDK releases.
+
+### Production Ready
+
+Used by thousands of applications in production, the SDK is battle-tested and reliable for mission-critical Facebook integrations.
+
+### Expo Support
+
+Full support for Expo managed workflow with a config plugin that handles native configuration automatically.
+
+## When to Use This SDK
+
+<AccordionGroup>
+  <Accordion title="Social Authentication">
+    Implement Facebook Login as a quick and trusted authentication method, reducing friction in user onboarding.
+  </Accordion>
+  
+  <Accordion title="Social Sharing">
+    Enable users to share content from your app directly to their Facebook timeline, increasing organic reach and engagement.
+  </Accordion>
+  
+  <Accordion title="Marketing & Analytics">
+    Track conversions, measure campaign effectiveness, and understand user behavior with Facebook's powerful analytics tools.
+  </Accordion>
+  
+  <Accordion title="User Data Access">
+    Access user profile information, friend lists, and other Facebook data (with proper permissions) to enhance your app's functionality.
+  </Accordion>
+</AccordionGroup>
+
+## Version Compatibility
+
+The SDK maintains compatibility with modern React Native versions:
+
+| Facebook SDK | Library Version | Required React Native |
+|--------------|----------------|----------------------|
+| >= 9.3.0+    | `> 4.3.0`      | `>= 0.63.3`*         |
+| >= 9.0.0+    | `>= 3.0.1`     | `>= 0.60`            |
+
+<Warning>
+  Versions after 4.2.0 only support React Native 0.63.3 and above, as this is the oldest version compatible with the latest Xcode. While older versions may technically work, they are not officially supported.
+</Warning>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Get started by installing the SDK in your React Native project
+  </Card>
+  
+  <Card title="Quick Start" icon="bolt" href="/quickstart">
+    Build your first Facebook Login integration in minutes
+  </Card>
+</CardGroup>
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/thebergamo/react-native-fbsdk-next">
+    View source code, report issues, and contribute
+  </Card>
+  
+  <Card title="Facebook Developer Docs" icon="book" href="https://developers.facebook.com/docs/react-native">
+    Official Facebook documentation for React Native
+  </Card>
+</CardGroup>

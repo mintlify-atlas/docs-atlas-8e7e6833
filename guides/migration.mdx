@@ -1,0 +1,493 @@
+---
+title: Migration Guide
+description: Migrate from expo-facebook to react-native-fbsdk-next
+---
+
+## Migrating from expo-facebook
+
+The [expo-facebook](https://github.com/expo/expo-facebook) module was deprecated in Expo SDK 45 and removed in Expo SDK 46. This guide will help you migrate to `react-native-fbsdk-next`.
+
+## Why Migrate?
+
+- `expo-facebook` is no longer maintained or supported
+- `react-native-fbsdk-next` provides more features and better performance
+- Access to the latest Facebook SDK features and security updates
+- Better TypeScript support
+- Active community and maintenance
+
+## Installation
+
+First, uninstall `expo-facebook` and install `react-native-fbsdk-next`:
+
+```bash
+# Remove expo-facebook
+npm uninstall expo-facebook
+
+# Install react-native-fbsdk-next
+npm install react-native-fbsdk-next
+```
+
+or with yarn:
+
+```bash
+yarn remove expo-facebook
+yarn add react-native-fbsdk-next
+```
+
+### For Expo Projects
+
+If you're using Expo, add the config plugin to your `app.json` or `app.config.js`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "YOUR_FACEBOOK_APP_ID",
+          "clientToken": "YOUR_CLIENT_TOKEN",
+          "displayName": "Your App Name",
+          "scheme": "fbYOUR_FACEBOOK_APP_ID",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true,
+          "iosUserTrackingPermission": "This identifier will be used to deliver personalized ads to you."
+        }
+      ]
+    ]
+  }
+}
+```
+
+<Note>
+**Important:** The `clientToken` parameter is **required** in `react-native-fbsdk-next`, but was not required in `expo-facebook`. You can get this value from **Facebook Developers > Your App > Settings > Advanced**.
+</Note>
+
+## API Migration Table
+
+The following table shows the `expo-facebook` API functions and their `react-native-fbsdk-next` equivalents:
+
+| expo-facebook | Supported | react-native-fbsdk-next |
+| --- | --- | --- |
+| `flushAsync()` | ✅ | `AppEventsLogger.flush()` |
+| `getAdvertiserIDAsync()` | ❌ | Not supported |
+| `getAnonymousIDAsync()` | ✅ | `AppEventsLogger.getAnonymousID()` |
+| `getAttributionIDAsync()` | ✅ | `AppEventsLogger.getAttributionID()` |
+| `getAuthenticationCredentialAsync()` | ✅ | `AccessToken.getCurrentAccessToken()` then access `.accessToken` property |
+| `getPermissionsAsync()` | ❌ | Not supported |
+| `getUserIDAsync()` | ✅ | `AppEventsLogger.getUserId()` |
+| `initializeAsync(optionsOrAppId, appName)` | ✅ | `Settings.setAppID($appId)`; `Settings.setAppName($appName)`; `Settings.setGraphAPIVersion($version)`; `Settings.setAutoLogAppEventsEnabled($autoLogAppEvents)`; `Settings.initializeSDK()` |
+| `logEventAsync(eventName, parameters)` | ✅ | `AppEventsLogger.logEvent(eventName, parameters)` |
+| `logInWithReadPermissionsAsync(options)` | ✅ | `LoginManager.logInWithPermissions(permissions)` |
+| `logOutAsync()` | ✅ | `LoginManager.logOut()` |
+| `logPurchaseAsync(purchaseAmount, currencyCode, parameters)` | ✅ | `AppEventsLogger.logPurchase(purchaseAmount, currency, parameters)` |
+| `logPushNotificationOpenAsync(campaign)` | ✅ | `AppEventsLogger.logPushNotificationOpen(payload)` |
+| `requestPermissionsAsync()` | ❌ | Not supported |
+| `setAdvertiserIDCollectionEnabledAsync(enabled)` | ✅ | `Settings.setAdvertiserIDCollectionEnabled(enabled)` |
+| `setAdvertiserTrackingEnabledAsync(enabled)` | ✅ | `Settings.setAdvertiserTrackingEnabled(enabled)` |
+| `setAutoLogAppEventsEnabledAsync(enabled)` | ✅ | `Settings.setAutoLogAppEventsEnabled(enabled)` |
+| `setUserDataAsync(userData)` | ✅ | `AppEventsLogger.setUserData(userData)` |
+| `setUserIDAsync(userID)` | ✅ | `AppEventsLogger.setUserID(userID)` |
+
+## Code Migration Examples
+
+### Initialization
+
+**Before (expo-facebook):**
+
+```js
+import * as Facebook from 'expo-facebook';
+
+await Facebook.initializeAsync({
+  appId: 'YOUR_APP_ID',
+  appName: 'Your App Name',
+});
+```
+
+**After (react-native-fbsdk-next):**
+
+```js
+import { Settings } from 'react-native-fbsdk-next';
+
+Settings.setAppID('YOUR_APP_ID');
+Settings.setAppName('Your App Name');
+Settings.initializeSDK();
+```
+
+### Login
+
+**Before (expo-facebook):**
+
+```js
+import * as Facebook from 'expo-facebook';
+
+const { type, token } = await Facebook.logInWithReadPermissionsAsync({
+  permissions: ['public_profile', 'email'],
+});
+
+if (type === 'success') {
+  console.log('Logged in!', token);
+}
+```
+
+**After (react-native-fbsdk-next):**
+
+```js
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+
+const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+
+if (!result.isCancelled) {
+  const data = await AccessToken.getCurrentAccessToken();
+  console.log('Logged in!', data.accessToken);
+}
+```
+
+### Logout
+
+**Before (expo-facebook):**
+
+```js
+import * as Facebook from 'expo-facebook';
+
+await Facebook.logOutAsync();
+```
+
+**After (react-native-fbsdk-next):**
+
+```js
+import { LoginManager } from 'react-native-fbsdk-next';
+
+LoginManager.logOut();
+```
+
+### Getting Access Token
+
+**Before (expo-facebook):**
+
+```js
+import * as Facebook from 'expo-facebook';
+
+const credential = await Facebook.getAuthenticationCredentialAsync();
+if (credential) {
+  console.log('Token:', credential.token);
+}
+```
+
+**After (react-native-fbsdk-next):**
+
+```js
+import { AccessToken } from 'react-native-fbsdk-next';
+
+const data = await AccessToken.getCurrentAccessToken();
+if (data) {
+  console.log('Token:', data.accessToken);
+}
+```
+
+### Logging Events
+
+**Before (expo-facebook):**
+
+```js
+import * as Facebook from 'expo-facebook';
+
+await Facebook.logEventAsync('ViewedContent', {
+  content_type: 'product',
+  content_id: 'ABC123',
+});
+```
+
+**After (react-native-fbsdk-next):**
+
+```js
+import { AppEventsLogger } from 'react-native-fbsdk-next';
+
+AppEventsLogger.logEvent('ViewedContent', {
+  content_type: 'product',
+  content_id: 'ABC123',
+});
+```
+
+### Logging Purchases
+
+**Before (expo-facebook):**
+
+```js
+import * as Facebook from 'expo-facebook';
+
+await Facebook.logPurchaseAsync(9.99, 'USD', { item: 'Premium Plan' });
+```
+
+**After (react-native-fbsdk-next):**
+
+```js
+import { AppEventsLogger } from 'react-native-fbsdk-next';
+
+AppEventsLogger.logPurchase(9.99, 'USD', { item: 'Premium Plan' });
+```
+
+### Setting User Data
+
+**Before (expo-facebook):**
+
+```js
+import * as Facebook from 'expo-facebook';
+
+await Facebook.setUserIDAsync('user123');
+await Facebook.setUserDataAsync({
+  email: 'user@example.com',
+  firstName: 'John',
+  lastName: 'Doe',
+});
+```
+
+**After (react-native-fbsdk-next):**
+
+```js
+import { AppEventsLogger } from 'react-native-fbsdk-next';
+
+AppEventsLogger.setUserID('user123');
+AppEventsLogger.setUserData({
+  email: 'user@example.com',
+  firstName: 'John',
+  lastName: 'Doe',
+});
+```
+
+## React Native Version Compatibility
+
+Make sure you're using a compatible version of React Native:
+
+| FB SDK | react-native-fbsdk-next version | Required React Native Version |
+| --- | --- | --- |
+| &gt;= 9.3.0+ | `> 4.3.0` | `&gt;= 0.63.3`* |
+| &gt;= 9.0.0+ | `&gt;= 3.0.1` | `&gt;= 0.60` |
+| &lt;= 8.0.1 | `&gt;= 1.0.0` | `&gt;= 0.60` |
+| &lt;= 8.0.1 | `&lt;= 0.10` | `&lt;= 0.59.x` |
+
+<Warning>
+**Attention:** Versions after 4.2.0 only support React Native versions above 0.63.3, as it's the oldest version that supports the latest Xcode version. While it may work on older versions, they are not officially supported.
+</Warning>
+
+## Native Configuration Changes
+
+### iOS Changes
+
+You'll need to update your `Info.plist` and `AppDelegate`:
+
+#### Info.plist
+
+Ensure these keys are present:
+
+```xml
+<key>FacebookAppID</key>
+<string>YOUR_APP_ID</string>
+<key>FacebookClientToken</key>
+<string>YOUR_CLIENT_TOKEN</string>
+<key>FacebookDisplayName</key>
+<string>Your App Name</string>
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>fbYOUR_APP_ID</string>
+    </array>
+  </dict>
+</array>
+<key>LSApplicationQueriesSchemes</key>
+<array>
+  <string>fbapi</string>
+  <string>fb-messenger-share-api</string>
+</array>
+```
+
+#### AppDelegate.m (Objective-C)
+
+Add the required imports and initialization:
+
+```objc
+#import <AuthenticationServices/AuthenticationServices.h>
+#import <SafariServices/SafariServices.h>
+#import <FBSDKCoreKit/FBSDKCoreKit-Swift.h>
+
+- (BOOL)application:(UIApplication *)application 
+    didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+  [[FBSDKApplicationDelegate sharedInstance] application:application
+                      didFinishLaunchingWithOptions:launchOptions];
+  
+  // Your other code...
+  return YES;
+}
+
+- (BOOL)application:(UIApplication *)app
+            openURL:(NSURL *)url
+            options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+{
+  return [[FBSDKApplicationDelegate sharedInstance]application:app
+                                                      openURL:url
+                                                      options:options];
+}
+```
+
+### Android Changes
+
+Update your `AndroidManifest.xml` and `strings.xml`:
+
+#### strings.xml
+
+```xml
+<string name="facebook_app_id">YOUR_APP_ID</string>
+<string name="facebook_client_token">YOUR_CLIENT_TOKEN</string>
+```
+
+#### AndroidManifest.xml
+
+```xml
+<meta-data 
+  android:name="com.facebook.sdk.ApplicationId" 
+  android:value="@string/facebook_app_id"/>
+<meta-data 
+  android:name="com.facebook.sdk.ClientToken" 
+  android:value="@string/facebook_client_token"/>
+```
+
+## Enabling Auto App Installs in Expo
+
+To enable auto app installs tracking in Expo:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "YOUR_APP_ID",
+          "clientToken": "YOUR_CLIENT_TOKEN",
+          "displayName": "Your App Name",
+          "scheme": "fbYOUR_APP_ID",
+          "advertiserIDCollectionEnabled": true,
+          "autoLogAppEventsEnabled": true,
+          "isAutoInitEnabled": true,
+          "iosUserTrackingPermission": "This identifier will be used to deliver personalized ads to you."
+        }
+      ]
+    ]
+  }
+}
+```
+
+Then in your app code (iOS only):
+
+```js
+import { requestTrackingPermissionsAsync } from 'expo-tracking-transparency';
+import { Settings } from 'react-native-fbsdk-next';
+
+const { status } = await requestTrackingPermissionsAsync();
+
+Settings.initializeSDK();
+
+if (status === 'granted') {
+  await Settings.setAdvertiserTrackingEnabled(true);
+}
+```
+
+## Features Not Available
+
+The following `expo-facebook` features are **not available** in `react-native-fbsdk-next`:
+
+### getAdvertiserIDAsync()
+
+This method is not supported. Use `AppEventsLogger.getAdvertiserID()` as an alternative, though it may return different data.
+
+### getPermissionsAsync()
+
+Not directly supported. After login, you can access granted permissions from the `AccessToken`:
+
+```js
+import { AccessToken } from 'react-native-fbsdk-next';
+
+const data = await AccessToken.getCurrentAccessToken();
+if (data) {
+  console.log('Granted permissions:', data.permissions);
+  console.log('Declined permissions:', data.declinedPermissions);
+}
+```
+
+### requestPermissionsAsync()
+
+Not supported. Use `LoginManager.logInWithPermissions()` to request additional permissions:
+
+```js
+import { LoginManager } from 'react-native-fbsdk-next';
+
+// Request additional permissions
+const result = await LoginManager.logInWithPermissions([
+  'user_friends',
+  'user_birthday',
+]);
+```
+
+## Testing Your Migration
+
+After migrating, test these key flows:
+
+1. **Login flow** - Ensure users can log in successfully
+2. **Token retrieval** - Verify access tokens are obtained correctly
+3. **Event logging** - Check that events appear in Facebook Analytics
+4. **Logout** - Confirm users can log out properly
+5. **Permission handling** - Test both granted and declined permissions
+
+## Common Migration Issues
+
+### Missing Client Token
+
+If you see errors about a missing client token, make sure you've added it to your configuration. Get it from:
+
+**Facebook Developers > Your App > Settings > Advanced > Client Token**
+
+### iOS Build Errors
+
+After migration, run:
+
+```bash
+cd ios && pod install && cd ..
+```
+
+If you still have issues, try:
+
+```bash
+cd ios
+rm -rf Pods Podfile.lock
+pod install
+cd ..
+```
+
+### Android Build Errors
+
+Clean your Android build:
+
+```bash
+cd android
+./gradlew clean
+cd ..
+```
+
+## Need Help?
+
+If you encounter issues during migration:
+
+1. Check the [Troubleshooting Guide](/guides/troubleshooting)
+2. Review [GitHub Issues](https://github.com/thebergamo/react-native-fbsdk-next/issues)
+3. Consult the [Facebook SDK Documentation](https://developers.facebook.com/docs/facebook-login)
+
+## See Also
+
+- [Installation Guide](/installation)
+- [Testing Guide](/guides/testing)
+- [Troubleshooting Guide](/guides/troubleshooting)
+- [expo-facebook Documentation](https://docs.expo.dev/versions/v45.0.0/sdk/facebook/) (deprecated)

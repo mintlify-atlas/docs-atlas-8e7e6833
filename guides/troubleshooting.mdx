@@ -1,0 +1,329 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for React Native FBSDK Next
+---
+
+This guide covers common issues you might encounter when integrating the Facebook SDK into your React Native app and how to resolve them.
+
+## Common Issues
+
+<Accordion title="1. Android project fails to run">
+  **Problem:** Your Android app crashes or fails to build after installing the SDK.
+
+  **Solution:**
+  
+  - Make sure you've added the required code in your `AndroidManifest.xml` and `res/values/strings.xml` with your Facebook app settings
+  - Verify you've followed all steps in the [Android configuration guide](https://developers.facebook.com/docs/android/getting-started/)
+  - Check that your Facebook App ID and Client Token are correctly configured
+  - Ensure your `strings.xml` includes:
+    ```xml
+    <string name="facebook_app_id">YOUR_APP_ID</string>
+    <string name="facebook_client_token">YOUR_CLIENT_TOKEN</string>
+    ```
+</Accordion>
+
+<Accordion title="2. Duplicate symbol errors (iOS)">
+  **Problem:** You get duplicate symbol errors when building for iOS.
+
+  **Solution:**
+  
+  Make sure that `FBSDKCoreKit.framework`, `FBSDKLoginKit.framework`, and `FBSDKShareKit.framework` are **not** in **Link Binary with Libraries** for your root project when using CocoaPods.
+  
+  These frameworks should only be linked through CocoaPods, not manually added to your project.
+</Accordion>
+
+<Accordion title="3. Build error: 'no type or protocol named UIApplicationOpenURLOptionsKey' (iOS)">
+  **Problem:** Xcode shows a compilation error about `UIApplicationOpenURLOptionsKey`.
+
+  **Solution:**
+  
+  Your Xcode version is too old. **Upgrade to Xcode 10.0 or later**.
+  
+  This type is only available in recent versions of iOS SDK that ship with Xcode 10+.
+</Accordion>
+
+<Accordion title="4. Undefined symbols for architecture x86_64 (iOS)">
+  **Problem:** You get a compilation error with undefined Swift symbols:
+  
+  ```
+  Undefined symbols for architecture x86_64:
+    "_swift_FORCE_LOAD$_swiftUniformTypeIdentifiers"
+    "_swift_FORCE_LOAD$_swiftCoreMIDI"
+    "_swift_FORCE_LOAD$_swiftWebKit"
+  ```
+
+  **Solution:**
+  
+  After [facebook-ios-sdk v7](https://github.com/facebook/facebook-ios-sdk), parts of the SDK are written in Swift. You need to coordinate Swift language usage with Objective-C.
+  
+  **Option 1: Add an empty Swift file (Recommended)**
+  
+  1. In Xcode, add a new file named `File.swift` to your main project folder
+  2. When Xcode asks if you want to "Create Bridging Header", click **Yes**
+  
+  This automatically adds the required Swift library search paths to your build settings:
+  ```
+  $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)
+  $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)
+  ```
+  
+  **Option 2: Update Podfile**
+  
+  Add this to the `post_install` section of your Podfile, then run `pod deintegrate && pod install`:
+  
+  ```ruby
+  # Mixing Swift and Objective-C in a react-native project may be problematic.
+  # Workaround: https://github.com/facebookarchive/react-native-fbsdk/issues/755#issuecomment-787488994
+  installer.aggregate_targets.first.user_project.native_targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['LIBRARY_SEARCH_PATHS'] = ['$(inherited)', '$(SDKROOT)/usr/lib/swift']
+    end
+  end
+  ```
+  
+  See [this issue](https://github.com/thebergamo/react-native-fbsdk-next/issues/30) for more details.
+</Accordion>
+
+<Accordion title="5. AppLink.fetchDeferredAppLink does not work (iOS)">
+  **Problem:** Deferred app links are not working on iOS.
+
+  **Solution:**
+  
+  Both the **Facebook App** and **your app** must have **App Tracking Transparency (ATT)** permission granted for Facebook deferred app links to work.
+  
+  Make sure:
+  1. Your app requests ATT permission using `requestTrackingPermissionsAsync` or similar
+  2. The user has granted tracking permission to both your app and the Facebook app
+  3. You've added `NSUserTrackingUsageDescription` to your `Info.plist`
+  
+  See [this related issue](https://github.com/thebergamo/react-native-fbsdk-next/issues/104#issuecomment-931488609) for more information.
+</Accordion>
+
+<Accordion title="6. Exception: 'App ID not found' (iOS)">
+  **Problem:** You get an exception:
+  ```
+  App ID not found. Add a string value with your app ID for the key 
+  FacebookAppID to the Info.plist or call [FBSDKSettings setAppID:].
+  ```
+
+  **Solution:**
+  
+  If you're certain that you have the `FacebookAppID` in your `Info.plist` or that you've called `Settings.setAppID()`, you may be able to fix it by adding the following to your `AppDelegate.m` inside the `application:didFinishLaunchingWithOptions:` method, just before the `return YES` statement:
+  
+  ```objective-c
+  [[FBSDKApplicationDelegate sharedInstance] application:application
+                        didFinishLaunchingWithOptions:launchOptions];
+  ```
+  
+  Make sure this initialization happens early in your app's launch cycle.
+</Accordion>
+
+<Accordion title="7. Events not showing in Facebook Events Manager">
+  **Problem:** You're logging events but they don't appear in the Facebook Events Manager dashboard.
+
+  **Solution:**
+  
+  For events to show up in the Events Manager, you need:
+  
+  1. **Run the app on a real device** (not simulator)
+  2. **Have the Facebook app running in the background** and logged in to an account
+  3. **Add that Facebook account as an "Advertising Account"** for your app in Facebook's dashboard
+  4. **Most important:** Have **ATT (App Tracking Transparency) enabled** on both:
+     - The **Facebook app**
+     - **Your app**
+  
+  Facebook determines which events to show based on who is logged in on the Facebook App. Only events from accounts added as "Advertising Accounts" will be visible.
+  
+  ### How to add an Advertising Account:
+  1. Go to [Facebook App Dashboard](https://developers.facebook.com/apps)
+  2. Select your app
+  3. Go to **Settings** > **Advanced**
+  4. Under **Advertising Accounts**, add the relevant accounts
+</Accordion>
+
+<Accordion title="8. Login error on Android: 'Error logging you into this application'">
+  **Problem:** When attempting to log in via the native Facebook app on Android, you get an error: "There is an error in logging you into this application."
+
+  **Solution:**
+  
+  This typically means the appropriate **signing certificate hash** hasn't been saved to your Facebook app.
+  
+  ### For Development:
+  
+  1. Generate your development key hash:
+     ```bash
+     keytool -exportcert -alias androiddebugkey -keystore ~/.android/debug.keystore | openssl sha1 -binary | openssl base64
+     ```
+     (Default password is usually `android`)
+  
+  2. Add it to your Facebook app dashboard under **Settings** > **Basic** > **Key Hashes**
+  
+  ### For Release (Google Play signing):
+  
+  If Google is signing your releases, you'll need to get the SHA-1 from the Play Console:
+  
+  1. Go to [Play Console](https://play.google.com/console/)
+  2. Navigate to **Release** > **App signing** > **App signing key certificate**
+  3. Copy the SHA-1 certificate fingerprint
+  4. Convert it to base64:
+     ```bash
+     echo YOUR_SHA1_HERE | xxd -r -p | openssl base64
+     ```
+  5. Add the resulting hash to your Facebook app settings
+  
+  ### For Internal Testing:
+  
+  If you're using App Tester for internal releases:
+  
+  1. Get the SHA-1 from **Release** > **Internal app sharing** > **Internal test certificate**
+  2. Run the same command to convert it
+  3. Add that hash as well
+  
+  You can find detailed instructions [here](https://developers.facebook.com/docs/facebook-login/android#6--provide-the-development-and-release-key-hashes-for-your-app).
+</Accordion>
+
+<Accordion title="9. Forced to use 'limited' login on iOS">
+  **Problem:** iOS forces the limited login experience even though you didn't request it.
+
+  **Solution:**
+  
+  Although the official documentation doesn't explicitly state this, the **App Tracking Transparency (ATT)** permission is required to use the non-limited/default login on iOS devices.
+  
+  **Note:** This works fine on Android without the permission.
+  
+  ### How to fix:
+  
+  1. Request ATT permission before attempting login:
+     ```js
+     import { requestTrackingPermissionsAsync } from 'expo-tracking-transparency';
+     // or use react-native-tracking-transparency
+     
+     const { status } = await requestTrackingPermissionsAsync();
+     if (status === 'granted') {
+       // User granted permission - default login will work
+     } else {
+       // User denied - limited login will be used
+     }
+     ```
+  
+  2. Make sure `NSUserTrackingUsageDescription` is in your `Info.plist`:
+     ```xml
+     <key>NSUserTrackingUsageDescription</key>
+     <string>This identifier will be used to deliver personalized ads to you.</string>
+     ```
+  
+  If the user allows ATT, the default Facebook login page will open. If disabled, the limited version of login will be used, which makes some Graph API endpoints unusable.
+  
+  For more information, see [Limited Login documentation](https://developers.facebook.com/docs/facebook-login/limited-login/).
+</Accordion>
+
+## Login Doesn't Work When Facebook App is Installed
+
+**Problem:** Login works in the browser but fails when the Facebook app is installed on the device.
+
+**Solution:**
+
+Make sure you've implemented the `openURL` method correctly in your `AppDelegate`. Without it, the Facebook app cannot redirect back to your app after authentication.
+
+### For Objective-C (React Native 0.76 and below):
+
+```objc
+- (BOOL)application:(UIApplication *)app
+            openURL:(NSURL *)url
+            options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+{
+  return [[FBSDKApplicationDelegate sharedInstance]application:app
+                                                      openURL:url
+                                                      options:options];
+}
+```
+
+### For Swift (React Native 0.77 and above):
+
+```swift
+public override func application(
+  _ app: UIApplication,
+  open url: URL,
+  options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+) -> Bool {
+  let handledByFB = ApplicationDelegate.shared.application(
+    app, open: url, options: options)
+  let handledBySuper = super.application(
+    app, open: url, options: options)
+  return handledByFB || handledBySuper
+}
+```
+
+See [this issue](https://github.com/thebergamo/react-native-fbsdk-next/issues/59#issuecomment-1038149447) for more details.
+
+## Deep Linking Conflicts with Facebook SSO
+
+**Problem:** Using `RCTLinkingManager` causes Facebook login to fail.
+
+**Solution:**
+
+Always check Facebook SDK **before** `RCTLinkingManager` in the `openURL` method. If `RCTLinkingManager` is placed first, it will intercept the Facebook SSO callback URL.
+
+### Objective-C:
+
+```objc
+- (BOOL)application:(UIApplication *)app
+            openURL:(NSURL *)url
+            options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+{
+  // Check Facebook FIRST
+  if ([[FBSDKApplicationDelegate sharedInstance] application:app openURL:url options:options]) {
+    return YES;
+  }
+  
+  // Then check RCTLinkingManager
+  if ([RCTLinkingManager application:app openURL:url options:options]) {
+    return YES;
+  }
+  
+  return NO;
+}
+```
+
+### Swift:
+
+```swift
+public override func application(
+  _ app: UIApplication,
+  open url: URL,
+  options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+) -> Bool {
+  // IMPORTANT: Facebook SDK must be checked FIRST
+  let handledByFB = ApplicationDelegate.shared.application(
+    app, open: url, options: options)
+  
+  // Then React Native Linking
+  let handledByRN = RCTLinkingManager.application(
+    app, open: url, options: options)
+  
+  // Finally super
+  let handledBySuper = super.application(
+    app, open: url, options: options)
+  
+  return handledByFB || handledByRN || handledBySuper
+}
+```
+
+## Getting Help
+
+If you're still experiencing issues:
+
+1. Check the [GitHub Issues](https://github.com/thebergamo/react-native-fbsdk-next/issues) for similar problems
+2. Review the [Facebook SDK documentation](https://developers.facebook.com/docs/facebook-login)
+3. Create a new issue with:
+   - React Native version
+   - react-native-fbsdk-next version
+   - Platform (iOS/Android)
+   - Complete error messages
+   - Relevant code snippets
+
+## See Also
+
+- [Installation Guide](/installation)
+- [Testing Guide](/guides/testing)
+- [Migration Guide](/guides/migration)

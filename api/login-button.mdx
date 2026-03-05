@@ -1,0 +1,608 @@
+---
+title: LoginButton
+description: API reference for the LoginButton component
+---
+
+The `LoginButton` component is a pre-built UI component that initiates Facebook Login or Logout when pressed. It automatically shows the appropriate button based on the user's login state.
+
+## Import
+
+```javascript
+import { LoginButton } from 'react-native-fbsdk-next';
+```
+
+## Props
+
+### permissions
+
+The permissions to request when the login button is pressed.
+
+```typescript
+permissions?: Array<string>
+```
+
+**Type:** `Array<string>`  
+**Default:** `['public_profile']`  
+**Platform:** Both
+
+#### Example
+
+```javascript
+<LoginButton
+  permissions={['public_profile', 'email', 'user_friends']}
+  onLoginFinished={handleLogin}
+  onLogoutFinished={handleLogout}
+/>
+```
+
+#### Common Permissions
+
+- `public_profile` - Basic profile information (name, profile picture)
+- `email` - User's email address
+- `user_friends` - List of friends who use your app
+- `user_birthday` - User's birthday
+- `user_photos` - User's photos
+- `user_posts` - User's posts
+
+---
+
+### onLoginFinished
+
+Callback invoked when login completes, fails, or is cancelled.
+
+```typescript
+onLoginFinished?: (error: Record<string, unknown>, result: LoginResult) => void
+```
+
+**Type:** Function  
+**Platform:** Both
+
+#### Parameters
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `error` | `Record<string, unknown>` | Error object if login failed, `null` otherwise |
+| `result` | `LoginResult` | Result object containing login status and permissions |
+
+**LoginResult:**
+
+```typescript
+type LoginResult = {
+  isCancelled: boolean;
+  grantedPermissions?: Array<string>;
+  declinedPermissions?: Array<string>;
+}
+```
+
+#### Example
+
+```javascript
+import { LoginButton, AccessToken } from 'react-native-fbsdk-next';
+
+function MyComponent() {
+  const handleLoginFinished = async (error, result) => {
+    if (error) {
+      console.log('Login failed with error:', error);
+      return;
+    }
+    
+    if (result.isCancelled) {
+      console.log('Login was cancelled');
+      return;
+    }
+    
+    console.log('Login success!');
+    console.log('Granted:', result.grantedPermissions);
+    console.log('Declined:', result.declinedPermissions);
+    
+    // Get access token
+    const data = await AccessToken.getCurrentAccessToken();
+    console.log('Access Token:', data.accessToken);
+  };
+  
+  return (
+    <LoginButton
+      permissions={['public_profile', 'email']}
+      onLoginFinished={handleLoginFinished}
+      onLogoutFinished={() => console.log('Logged out')}
+    />
+  );
+}
+```
+
+---
+
+### onLogoutFinished
+
+Callback invoked when logout completes.
+
+```typescript
+onLogoutFinished?: () => void
+```
+
+**Type:** Function  
+**Platform:** Both
+
+#### Example
+
+```javascript
+<LoginButton
+  permissions={['public_profile']}
+  onLoginFinished={handleLogin}
+  onLogoutFinished={() => {
+    console.log('User logged out');
+    // Clear user data, navigate to login screen, etc.
+  }}
+/>
+```
+
+---
+
+### loginTrackingIOS
+
+The desired tracking preference for iOS login. Use `'limited'` for Limited Login (privacy-focused) or `'enabled'` for traditional login.
+
+```typescript
+loginTrackingIOS?: 'enabled' | 'limited'
+```
+
+**Type:** `'enabled' | 'limited'`  
+**Default:** `'enabled'`  
+**Platform:** iOS only
+
+<Note>
+iOS 14.5+ requires Limited Login when users opt out of App Tracking Transparency. Setting this to `'limited'` ensures your app works for all users.
+</Note>
+
+#### Example
+
+```javascript
+import { Platform } from 'react-native';
+import {
+  LoginButton,
+  AccessToken,
+  AuthenticationToken,
+} from 'react-native-fbsdk-next';
+
+function MyComponent() {
+  const handleLoginFinished = async (error, result) => {
+    if (error || result.isCancelled) return;
+    
+    if (Platform.OS === 'ios') {
+      const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+      if (authToken) {
+        console.log('Limited Login - Auth Token:', authToken.authenticationToken);
+      } else {
+        const accessToken = await AccessToken.getCurrentAccessToken();
+        console.log('Traditional Login - Access Token:', accessToken.accessToken);
+      }
+    }
+  };
+  
+  return (
+    <LoginButton
+      permissions={['public_profile', 'email']}
+      loginTrackingIOS="limited" // Enable Limited Login for iOS
+      onLoginFinished={handleLoginFinished}
+      onLogoutFinished={() => console.log('Logged out')}
+    />
+  );
+}
+```
+
+---
+
+### nonceIOS
+
+An optional nonce to use for iOS login validation. A unique nonce is automatically generated if not provided.
+
+```typescript
+nonceIOS?: string
+```
+
+**Type:** `string`  
+**Platform:** iOS only
+
+<Warning>
+The nonce must be a non-empty string without whitespace. Invalid nonces will be ignored.
+</Warning>
+
+#### Example
+
+```javascript
+import { LoginButton } from 'react-native-fbsdk-next';
+
+function generateNonce() {
+  return `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+}
+
+function MyComponent() {
+  const nonce = generateNonce();
+  
+  return (
+    <LoginButton
+      permissions={['public_profile', 'email']}
+      loginTrackingIOS="limited"
+      nonceIOS={nonce} // Custom nonce for validation
+      onLoginFinished={handleLogin}
+      onLogoutFinished={handleLogout}
+    />
+  );
+}
+```
+
+---
+
+### loginBehaviorAndroid
+
+The behavior to use when attempting login on Android.
+
+```typescript
+loginBehaviorAndroid?: 'native_with_fallback' | 'native_only' | 'web_only'
+```
+
+**Type:** `'native_with_fallback' | 'native_only' | 'web_only'`  
+**Default:** `'native_with_fallback'`  
+**Platform:** Android only
+
+- `'native_with_fallback'` - Try Facebook app, fall back to web dialog
+- `'native_only'` - Only use Facebook app
+- `'web_only'` - Only use web dialog
+
+#### Example
+
+```javascript
+<LoginButton
+  permissions={['public_profile', 'email']}
+  loginBehaviorAndroid="web_only" // Force web dialog on Android
+  onLoginFinished={handleLogin}
+  onLogoutFinished={handleLogout}
+/>
+```
+
+---
+
+### defaultAudience
+
+The default audience for posts made by the application.
+
+```typescript
+defaultAudience?: 'friends' | 'everyone' | 'only_me'
+```
+
+**Type:** `'friends' | 'everyone' | 'only_me'`  
+**Default:** `'friends'`  
+**Platform:** Both
+
+- `'friends'` - Only friends can see posts
+- `'everyone'` - All Facebook users can see posts
+- `'only_me'` - Only the user can see posts
+
+#### Example
+
+```javascript
+<LoginButton
+  permissions={['public_profile', 'email']}
+  defaultAudience="only_me" // Posts visible to user only
+  onLoginFinished={handleLogin}
+  onLogoutFinished={handleLogout}
+/>
+```
+
+---
+
+### tooltipBehaviorIOS
+
+The desired tooltip behavior for iOS.
+
+```typescript
+tooltipBehaviorIOS?: 'auto' | 'force_display' | 'disable'
+```
+
+**Type:** `'auto' | 'force_display' | 'disable'`  
+**Default:** `'auto'`  
+**Platform:** iOS only
+
+- `'auto'` - Show tooltip automatically based on Facebook's logic
+- `'force_display'` - Always show the tooltip
+- `'disable'` - Never show the tooltip
+
+#### Example
+
+```javascript
+<LoginButton
+  permissions={['public_profile']}
+  tooltipBehaviorIOS="disable" // Don't show tooltip
+  onLoginFinished={handleLogin}
+  onLogoutFinished={handleLogout}
+/>
+```
+
+---
+
+### style
+
+Custom styling for the button.
+
+```typescript
+style?: ViewStyle
+```
+
+**Type:** `ViewStyle`  
+**Platform:** Both
+
+<Note>
+The default button size is 190x30. You can customize the size, but the button content (text and icon) is controlled by Facebook and cannot be changed.
+</Note>
+
+#### Example
+
+```javascript
+import { StyleSheet } from 'react-native';
+import { LoginButton } from 'react-native-fbsdk-next';
+
+function MyComponent() {
+  return (
+    <LoginButton
+      permissions={['public_profile', 'email']}
+      style={styles.loginButton}
+      onLoginFinished={handleLogin}
+      onLogoutFinished={handleLogout}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  loginButton: {
+    height: 50,
+    width: 250,
+    marginVertical: 20,
+  },
+});
+```
+
+---
+
+### testID
+
+Test identifier for automated testing.
+
+```typescript
+testID?: string
+```
+
+**Type:** `string`  
+**Platform:** Both
+
+#### Example
+
+```javascript
+<LoginButton
+  permissions={['public_profile']}
+  testID="facebook-login-button"
+  onLoginFinished={handleLogin}
+  onLogoutFinished={handleLogout}
+/>
+```
+
+## Complete Example
+
+```javascript
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
+import {
+  LoginButton,
+  AccessToken,
+  AuthenticationToken,
+  Profile,
+} from 'react-native-fbsdk-next';
+
+function LoginScreen() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loginType, setLoginType] = useState(null);
+  
+  useEffect(() => {
+    checkLoginStatus();
+  }, []);
+  
+  const checkLoginStatus = async () => {
+    try {
+      const token = await AccessToken.getCurrentAccessToken();
+      if (token) {
+        const profile = await Profile.getCurrentProfile();
+        setUser(profile);
+        setLoginType('traditional');
+      } else if (Platform.OS === 'ios') {
+        const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+        if (authToken) {
+          const profile = await Profile.getCurrentProfile();
+          setUser(profile);
+          setLoginType('limited');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking login status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleLoginFinished = async (error, result) => {
+    if (error) {
+      console.log('Login error:', error);
+      alert('Login failed. Please try again.');
+      return;
+    }
+    
+    if (result.isCancelled) {
+      console.log('Login cancelled');
+      return;
+    }
+    
+    console.log('Login successful!');
+    console.log('Granted permissions:', result.grantedPermissions);
+    console.log('Declined permissions:', result.declinedPermissions);
+    
+    // Get user profile
+    try {
+      const profile = await Profile.getCurrentProfile();
+      setUser(profile);
+      
+      // Check login type
+      if (Platform.OS === 'ios') {
+        const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+        if (authToken) {
+          setLoginType('limited');
+          console.log('Limited Login');
+        } else {
+          setLoginType('traditional');
+          console.log('Traditional Login');
+        }
+      } else {
+        setLoginType('traditional');
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+  
+  const handleLogoutFinished = () => {
+    console.log('User logged out');
+    setUser(null);
+    setLoginType(null);
+  };
+  
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+  
+  return (
+    <View style={styles.container}>
+      {user ? (
+        <View style={styles.profileContainer}>
+          <Text style={styles.title}>Welcome!</Text>
+          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.userInfo}>User ID: {user.userID}</Text>
+          {user.email && (
+            <Text style={styles.userInfo}>Email: {user.email}</Text>
+          )}
+          <Text style={styles.loginTypeInfo}>
+            Login Type: {loginType === 'limited' ? 'Limited' : 'Traditional'}
+          </Text>
+          
+          <LoginButton
+            permissions={['public_profile', 'email']}
+            onLoginFinished={handleLoginFinished}
+            onLogoutFinished={handleLogoutFinished}
+            style={styles.loginButton}
+          />
+        </View>
+      ) : (
+        <View style={styles.loginContainer}>
+          <Text style={styles.title}>Welcome to My App</Text>
+          <Text style={styles.subtitle}>
+            Please log in with Facebook to continue
+          </Text>
+          
+          <LoginButton
+            permissions={[
+              'public_profile',
+              'email',
+              'user_friends',
+            ]}
+            loginTrackingIOS="limited"
+            loginBehaviorAndroid="native_with_fallback"
+            defaultAudience="friends"
+            tooltipBehaviorIOS="auto"
+            onLoginFinished={handleLoginFinished}
+            onLogoutFinished={handleLogoutFinished}
+            style={styles.loginButton}
+            testID="facebook-login-button"
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+  },
+  loginContainer: {
+    alignItems: 'center',
+  },
+  profileContainer: {
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  userInfo: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+  },
+  loginTypeInfo: {
+    fontSize: 14,
+    color: '#1877F2',
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  loginButton: {
+    height: 50,
+    width: 280,
+    marginTop: 20,
+  },
+});
+
+export default LoginScreen;
+```
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Login Methods" icon="right-to-bracket" href="/concepts/login-methods">
+    Learn about different login methods
+  </Card>
+  
+  <Card title="LoginManager" icon="code" href="/api/login-manager">
+    Programmatic login with LoginManager
+  </Card>
+  
+  <Card title="Limited Login" icon="user-shield" href="/concepts/limited-login">
+    Understand iOS Limited Login
+  </Card>
+  
+  <Card title="AccessToken" icon="key" href="/api/access-token">
+    Work with access tokens
+  </Card>
+</CardGroup>

@@ -1,0 +1,412 @@
+---
+title: Facebook Sharing
+description: Share links, photos, and videos to Facebook using ShareDialog and ShareButton
+---
+
+The Facebook SDK provides powerful sharing capabilities that allow users to share content from your app to their Facebook timeline.
+
+## Share Dialog
+
+The Share Dialog is the recommended way to share content. It provides a native sharing experience and doesn't require additional permissions.
+
+### Sharing Links
+
+```js
+import { ShareDialog } from 'react-native-fbsdk-next';
+
+// Build up a shareable link
+const shareLinkContent = {
+  contentType: 'link',
+  contentUrl: "https://facebook.com",
+};
+
+// Share the link using the share dialog
+async function shareLinkWithShareDialog() {
+  try {
+    const canShow = await ShareDialog.canShow(shareLinkContent);
+    
+    if (canShow) {
+      const result = await ShareDialog.show(shareLinkContent);
+      
+      if (result.isCancelled) {
+        console.log("Share cancelled");
+      } else {
+        console.log("Share successful with postId: " + result.postId);
+      }
+    }
+  } catch (error) {
+    console.log("Share failed with error: " + error);
+  }
+}
+```
+
+### Advanced Link Sharing
+
+Add hashtags, quotes, and other metadata:
+
+```js
+const shareLinkContent = {
+  contentType: 'link',
+  contentUrl: "https://example.com/article",
+  quote: "Check out this amazing article!",
+  hashtag: "#ReactNative",
+  commonParameters: {
+    ref: "my_campaign",
+    placeId: "1234567890",
+    peopleIds: ["friend_id_1", "friend_id_2"],
+  },
+};
+
+ShareDialog.show(shareLinkContent);
+```
+
+## Sharing Photos
+
+Share photos from your app to Facebook:
+
+```js
+import { ShareDialog } from "react-native-fbsdk-next";
+
+const photoUri = "file://" + "/path/of/photo.png";
+const sharePhotoContent = {
+  contentType: "photo",
+  photos: [{ imageUrl: photoUri }],
+};
+
+ShareDialog.show(sharePhotoContent);
+```
+
+### Multiple Photos
+
+Share multiple photos at once:
+
+```js
+const sharePhotoContent = {
+  contentType: "photo",
+  photos: [
+    { imageUrl: "file:///path/to/photo1.png" },
+    { imageUrl: "file:///path/to/photo2.png" },
+    { imageUrl: "file:///path/to/photo3.png" },
+  ],
+  commonParameters: {
+    hashtag: "#MyApp",
+  },
+};
+
+ShareDialog.show(sharePhotoContent);
+```
+
+### Photos with User Tagging
+
+```js
+const sharePhotoContent = {
+  contentType: "photo",
+  photos: [{ imageUrl: photoUri }],
+  commonParameters: {
+    peopleIds: ["123456789", "987654321"],
+    placeId: "1234567890",
+    hashtag: "#VacationTime",
+  },
+};
+
+ShareDialog.show(sharePhotoContent);
+```
+
+## Sharing Videos
+
+Share videos with optional preview photos and metadata:
+
+```js
+import { ShareDialog } from "react-native-fbsdk-next";
+
+const videoUri = "file://" + "/path/of/video.mp4";
+const shareVideoContent = {
+  contentType: "video",
+  video: { localUrl: videoUri },
+};
+
+ShareDialog.show(shareVideoContent);
+```
+
+### Video with Metadata
+
+```js
+const shareVideoContent = {
+  contentType: "video",
+  video: { localUrl: "file:///path/to/video.mp4" },
+  contentTitle: "My Amazing Video",
+  contentDescription: "Watch this incredible moment!",
+  previewPhoto: { imageUrl: "file:///path/to/thumbnail.png" },
+  commonParameters: {
+    hashtag: "#VideoOfTheDay",
+  },
+};
+
+ShareDialog.show(shareVideoContent);
+```
+
+## Share Dialog Configuration
+
+### Setting Dialog Mode
+
+Control how the share dialog is displayed:
+
+<Tabs>
+  <Tab title="Automatic (Recommended)">
+    ```js
+    import { ShareDialog } from 'react-native-fbsdk-next';
+
+    // The SDK will choose the best available mode
+    ShareDialog.setMode('automatic');
+    ```
+  </Tab>
+  <Tab title="Native">
+    ```js
+    import { ShareDialog } from 'react-native-fbsdk-next';
+
+    // Use native Facebook app dialog
+    ShareDialog.setMode('native');
+    ```
+  </Tab>
+  <Tab title="Web (Android)">
+    ```js
+    import { ShareDialog } from 'react-native-fbsdk-next';
+
+    // Use web dialog (Android only)
+    ShareDialog.setMode('web');
+    ```
+  </Tab>
+  <Tab title="Browser (iOS)">
+    ```js
+    import { ShareDialog } from 'react-native-fbsdk-next';
+
+    // Display in Safari (iOS only)
+    ShareDialog.setMode('browser');
+    ```
+  </Tab>
+</Tabs>
+
+### Error Handling
+
+Configure whether the dialog should fail on data errors:
+
+```js
+import { ShareDialog } from 'react-native-fbsdk-next';
+
+// Fail if there's a data error
+ShareDialog.setShouldFailOnDataError(true);
+
+// Continue even with data errors (default)
+ShareDialog.setShouldFailOnDataError(false);
+```
+
+## Share API
+
+<Warning>
+The Share API requires your app to have the `publish_actions` permission approved. For most use cases, use Share Dialogs instead for an easier and more consistent experience.
+</Warning>
+
+```js
+import { ShareApi } from 'react-native-fbsdk-next';
+
+const shareLinkContent = {
+  contentType: "link",
+  contentUrl: "https://facebook.com",
+};
+
+// Share using the Share API
+async function shareWithApi() {
+  try {
+    const canShare = await ShareApi.canShare(shareLinkContent);
+    
+    if (canShare) {
+      const result = await ShareApi.share(
+        shareLinkContent,
+        "/me",
+        "Check this out!"
+      );
+      console.log("Share with ShareApi success.");
+    }
+  } catch (error) {
+    console.log("Share with ShareApi failed with error: " + error);
+  }
+}
+```
+
+## Complete Examples
+
+<Tabs>
+  <Tab title="Link Sharing Component">
+    ```jsx
+    import React, { useState } from 'react';
+    import { View, Button, Alert } from 'react-native';
+    import { ShareDialog } from 'react-native-fbsdk-next';
+
+    export default function ShareLinkExample() {
+      const [sharing, setSharing] = useState(false);
+
+      const shareLink = async () => {
+        setSharing(true);
+        
+        const content = {
+          contentType: 'link',
+          contentUrl: 'https://example.com',
+          quote: 'Check out this amazing app!',
+          hashtag: '#ReactNative',
+        };
+
+        try {
+          const canShow = await ShareDialog.canShow(content);
+          
+          if (canShow) {
+            const result = await ShareDialog.show(content);
+            
+            if (!result.isCancelled) {
+              Alert.alert('Success', 'Shared successfully!');
+            }
+          } else {
+            Alert.alert('Error', 'Cannot show share dialog');
+          }
+        } catch (error) {
+          Alert.alert('Error', error.message);
+        } finally {
+          setSharing(false);
+        }
+      };
+
+      return (
+        <View>
+          <Button
+            title="Share to Facebook"
+            onPress={shareLink}
+            disabled={sharing}
+          />
+        </View>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Photo Sharing Component">
+    ```jsx
+    import React from 'react';
+    import { View, Button, Alert } from 'react-native';
+    import { ShareDialog } from 'react-native-fbsdk-next';
+    import { launchImageLibrary } from 'react-native-image-picker';
+
+    export default function SharePhotoExample() {
+      const sharePhoto = async () => {
+        // Pick an image
+        const result = await launchImageLibrary({ mediaType: 'photo' });
+        
+        if (result.assets && result.assets[0]) {
+          const photoUri = result.assets[0].uri;
+          
+          const content = {
+            contentType: 'photo',
+            photos: [{ imageUrl: photoUri }],
+            commonParameters: {
+              hashtag: '#MyApp',
+            },
+          };
+
+          try {
+            const canShow = await ShareDialog.canShow(content);
+            
+            if (canShow) {
+              const shareResult = await ShareDialog.show(content);
+              
+              if (!shareResult.isCancelled) {
+                Alert.alert('Success', 'Photo shared!');
+              }
+            }
+          } catch (error) {
+            Alert.alert('Error', error.message);
+          }
+        }
+      };
+
+      return (
+        <View>
+          <Button title="Share Photo" onPress={sharePhoto} />
+        </View>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## ShareContent Types
+
+### ShareLinkContent
+
+```typescript
+type ShareLinkContent = {
+  contentType: 'link';
+  contentUrl: string;
+  quote?: string;
+  hashtag?: string;
+  commonParameters?: ShareContentCommonParameters;
+};
+```
+
+### SharePhotoContent
+
+```typescript
+type SharePhotoContent = {
+  contentType: 'photo';
+  photos: Array<{ imageUrl: string }>;
+  contentUrl?: string;
+  commonParameters?: ShareContentCommonParameters;
+};
+```
+
+### ShareVideoContent
+
+```typescript
+type ShareVideoContent = {
+  contentType: 'video';
+  video: { localUrl: string };
+  contentTitle?: string;
+  contentDescription?: string;
+  previewPhoto?: { imageUrl: string };
+  contentUrl?: string;
+  commonParameters?: ShareContentCommonParameters;
+};
+```
+
+### Common Parameters
+
+```typescript
+type ShareContentCommonParameters = {
+  peopleIds?: Array<string>;  // IDs of people to tag
+  placeId?: string;            // ID of place to tag
+  ref?: string;                // Referrer parameter
+  hashtag?: string;            // Hashtag (max 32 chars)
+};
+```
+
+## API Reference
+
+### ShareDialog Methods
+
+| Method | Description |
+|--------|-------------|
+| `canShow(shareContent)` | Check if the dialog can be shown |
+| `show(shareContent)` | Show the dialog with content |
+| `setMode(mode)` | Set the dialog display mode |
+| `setShouldFailOnDataError(shouldFail)` | Configure error handling |
+
+### ShareDialogResult
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `isCancelled` | boolean | Whether the share was cancelled |
+| `postId` | string | ID of the created post (if successful) |
+
+## Best Practices
+
+1. **Always check canShow()** before attempting to show the share dialog
+2. **Use ShareDialog instead of ShareApi** for better user experience and no permission requirements
+3. **Keep hashtags under 32 characters** or they will be truncated
+4. **Provide high-quality images** for better engagement
+5. **Test on both platforms** as some features behave differently on iOS vs Android

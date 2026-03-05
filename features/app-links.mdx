@@ -1,0 +1,481 @@
+---
+title: App Links
+description: Handle deferred deep links from Facebook ads and posts
+---
+
+Facebook App Links allow you to deep link users from Facebook ads, posts, and other sources directly into specific content in your app. Deferred App Links work even if the user hasn't installed your app yet.
+
+## What are Deferred App Links?
+
+Deferred App Links enable you to send new users to the App Store or Google Play to install your app, and then deep link them to specific content after installation. This is particularly useful for:
+
+- **Ad campaigns** - Send users directly to a product page from an ad
+- **Referral programs** - Deep link to a referral signup page
+- **Content sharing** - Link to specific posts or articles
+- **Promotional campaigns** - Direct users to special offers
+
+## Basic Usage
+
+### Fetching a Deferred App Link
+
+```js
+import { AppLink } from 'react-native-fbsdk-next';
+
+const url = await AppLink.fetchDeferredAppLink();
+
+if (url) {
+  console.log('Deferred App Link URL:', url);
+  // Handle the deep link
+} else {
+  console.log('No deferred app link available');
+}
+```
+
+### Handling Deep Links on App Launch
+
+```jsx
+import React, { useEffect } from 'react';
+import { AppLink } from 'react-native-fbsdk-next';
+
+export default function App() {
+  useEffect(() => {
+    checkForDeferredDeepLink();
+  }, []);
+
+  const checkForDeferredDeepLink = async () => {
+    try {
+      const url = await AppLink.fetchDeferredAppLink();
+      
+      if (url) {
+        console.log('Received deferred deep link:', url);
+        handleDeepLink(url);
+      }
+    } catch (error) {
+      console.error('Error fetching deferred app link:', error);
+    }
+  };
+
+  const handleDeepLink = (url) => {
+    // Parse the URL and navigate to the appropriate screen
+    // Example: myapp://product/12345
+    const productId = url.split('/').pop();
+    // Navigate to product page
+  };
+
+  return (
+    // Your app content
+  );
+}
+```
+
+## Complete Examples
+
+<Tabs>
+  <Tab title="E-commerce App">
+    ```jsx
+    import React, { useEffect, useState } from 'react';
+    import { View, Text, ActivityIndicator } from 'react-native';
+    import { AppLink } from 'react-native-fbsdk-next';
+    import { useNavigation } from '@react-navigation/native';
+
+    export default function DeepLinkHandler() {
+      const [loading, setLoading] = useState(true);
+      const navigation = useNavigation();
+
+      useEffect(() => {
+        handleDeferredLink();
+      }, []);
+
+      const handleDeferredLink = async () => {
+        try {
+          const url = await AppLink.fetchDeferredAppLink();
+          
+          if (url) {
+            const linkType = parseLinkType(url);
+            
+            switch (linkType.type) {
+              case 'product':
+                navigation.navigate('Product', { id: linkType.id });
+                break;
+              case 'category':
+                navigation.navigate('Category', { id: linkType.id });
+                break;
+              case 'offer':
+                navigation.navigate('Offer', { code: linkType.id });
+                break;
+              default:
+                navigation.navigate('Home');
+            }
+          } else {
+            navigation.navigate('Home');
+          }
+        } catch (error) {
+          console.error('Deferred link error:', error);
+          navigation.navigate('Home');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const parseLinkType = (url) => {
+        // Example URL: myapp://product/12345
+        const parts = url.replace('myapp://', '').split('/');
+        return {
+          type: parts[0],
+          id: parts[1],
+        };
+      };
+
+      if (loading) {
+        return (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" />
+            <Text>Loading...</Text>
+          </View>
+        );
+      }
+
+      return null;
+    }
+    ```
+  </Tab>
+  <Tab title="Content App">
+    ```jsx
+    import React, { useEffect } from 'react';
+    import { AppLink } from 'react-native-fbsdk-next';
+    import { useNavigation } from '@react-navigation/native';
+    import analytics from '@react-native-firebase/analytics';
+
+    export default function AppLinkManager() {
+      const navigation = useNavigation();
+
+      useEffect(() => {
+        processDeferredLink();
+      }, []);
+
+      const processDeferredLink = async () => {
+        try {
+          const url = await AppLink.fetchDeferredAppLink();
+          
+          if (url) {
+            // Log the deferred link event
+            await analytics().logEvent('deferred_link_received', {
+              url: url,
+            });
+
+            // Parse the URL
+            const urlObj = new URL(url);
+            const path = urlObj.pathname;
+            const params = Object.fromEntries(urlObj.searchParams);
+
+            // Navigate based on path
+            if (path.includes('/article/')) {
+              const articleId = path.split('/article/')[1];
+              navigation.navigate('Article', { 
+                id: articleId,
+                source: 'deferred_link',
+                ...params,
+              });
+            } else if (path.includes('/video/')) {
+              const videoId = path.split('/video/')[1];
+              navigation.navigate('Video', { 
+                id: videoId,
+                source: 'deferred_link',
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error processing deferred link:', error);
+        }
+      };
+
+      return null;
+    }
+    ```
+  </Tab>
+  <Tab title="Referral Program">
+    ```jsx
+    import React, { useEffect } from 'react';
+    import { Alert } from 'react-native';
+    import { AppLink } from 'react-native-fbsdk-next';
+    import AsyncStorage from '@react-native-async-storage/async-storage';
+
+    export default function ReferralHandler() {
+      useEffect(() => {
+        handleReferralLink();
+      }, []);
+
+      const handleReferralLink = async () => {
+        try {
+          const url = await AppLink.fetchDeferredAppLink();
+          
+          if (url) {
+            const referralCode = extractReferralCode(url);
+            
+            if (referralCode) {
+              // Store the referral code
+              await AsyncStorage.setItem('referral_code', referralCode);
+              
+              // Show welcome message
+              Alert.alert(
+                'Welcome!',
+                `You were referred by a friend. You'll both get a bonus!`,
+                [
+                  {
+                    text: 'Claim Bonus',
+                    onPress: () => claimReferralBonus(referralCode),
+                  },
+                ]
+              );
+            }
+          }
+        } catch (error) {
+          console.error('Referral link error:', error);
+        }
+      };
+
+      const extractReferralCode = (url) => {
+        // Example: myapp://referral?code=ABC123
+        const urlObj = new URL(url);
+        return urlObj.searchParams.get('code');
+      };
+
+      const claimReferralBonus = async (code) => {
+        // Call your API to claim the referral bonus
+        console.log('Claiming bonus with code:', code);
+      };
+
+      return null;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Using with React Navigation
+
+### Deep Link Configuration
+
+```jsx
+import React, { useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { AppLink } from 'react-native-fbsdk-next';
+
+const Stack = createNativeStackNavigator();
+
+export default function AppNavigator() {
+  const navigationRef = React.useRef();
+  const [initialRoute, setInitialRoute] = React.useState(null);
+
+  useEffect(() => {
+    loadInitialRoute();
+  }, []);
+
+  const loadInitialRoute = async () => {
+    try {
+      const url = await AppLink.fetchDeferredAppLink();
+      
+      if (url) {
+        const route = parseUrlToRoute(url);
+        setInitialRoute(route);
+      } else {
+        setInitialRoute({ name: 'Home' });
+      }
+    } catch (error) {
+      console.error(error);
+      setInitialRoute({ name: 'Home' });
+    }
+  };
+
+  const parseUrlToRoute = (url) => {
+    // Parse your URL format
+    // Return route object: { name: 'RouteName', params: {} }
+    return { name: 'Home' };
+  };
+
+  if (!initialRoute) {
+    return null; // Or loading screen
+  }
+
+  return (
+    <NavigationContainer ref={navigationRef}>
+      <Stack.Navigator initialRouteName={initialRoute.name}>
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Product" component={ProductScreen} />
+        {/* Other screens */}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+```
+
+## App Tracking Transparency (iOS)
+
+<Warning>
+**Important for iOS:** Deferred App Links require App Tracking Transparency (ATT) permission on iOS. Both your app and the Facebook app must have ATT permission granted.
+</Warning>
+
+### Requesting ATT Permission
+
+```jsx
+import React, { useEffect } from 'react';
+import { Platform } from 'react-native';
+import { AppLink } from 'react-native-fbsdk-next';
+import { requestTrackingPermissionsAsync } from 'expo-tracking-transparency';
+
+export default function App() {
+  useEffect(() => {
+    setupAppLinks();
+  }, []);
+
+  const setupAppLinks = async () => {
+    if (Platform.OS === 'ios') {
+      // Request ATT permission first
+      const { status } = await requestTrackingPermissionsAsync();
+      
+      if (status === 'granted') {
+        // Now fetch deferred app links
+        const url = await AppLink.fetchDeferredAppLink();
+        if (url) {
+          handleDeepLink(url);
+        }
+      } else {
+        console.log('ATT permission denied - deferred links may not work');
+      }
+    } else {
+      // Android doesn't need ATT
+      const url = await AppLink.fetchDeferredAppLink();
+      if (url) {
+        handleDeepLink(url);
+      }
+    }
+  };
+
+  const handleDeepLink = (url) => {
+    console.log('Deep link:', url);
+  };
+
+  return (
+    // Your app
+  );
+}
+```
+
+## URL Parsing Helpers
+
+### Custom Hook for App Links
+
+```jsx
+import { useEffect, useState } from 'react';
+import { AppLink } from 'react-native-fbsdk-next';
+
+export function useAppLink() {
+  const [url, setUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDeferredLink();
+  }, []);
+
+  const fetchDeferredLink = async () => {
+    try {
+      const deferredUrl = await AppLink.fetchDeferredAppLink();
+      setUrl(deferredUrl);
+    } catch (error) {
+      console.error('Error fetching app link:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const parseUrl = () => {
+    if (!url) return null;
+
+    try {
+      const urlObj = new URL(url);
+      return {
+        protocol: urlObj.protocol,
+        host: urlObj.host,
+        pathname: urlObj.pathname,
+        params: Object.fromEntries(urlObj.searchParams),
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  return { url, loading, parsed: parseUrl() };
+}
+```
+
+### Usage
+
+```jsx
+import React from 'react';
+import { View, Text } from 'react-native';
+import { useAppLink } from './hooks/useAppLink';
+
+export default function AppLinkDemo() {
+  const { url, loading, parsed } = useAppLink();
+
+  if (loading) {
+    return <Text>Checking for deep links...</Text>;
+  }
+
+  if (url) {
+    return (
+      <View>
+        <Text>Deep Link Received!</Text>
+        <Text>URL: {url}</Text>
+        {parsed && (
+          <View>
+            <Text>Path: {parsed.pathname}</Text>
+            <Text>Params: {JSON.stringify(parsed.params)}</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  return <Text>No deep link</Text>;
+}
+```
+
+## Best Practices
+
+1. **Check early** - Fetch deferred app links as soon as possible during app startup
+2. **Request ATT on iOS** - Always request tracking permission before fetching deferred links
+3. **Handle null gracefully** - `fetchDeferredAppLink()` returns `null` if no link is available
+4. **Parse defensively** - Always validate and sanitize deep link URLs
+5. **Track attribution** - Use deep link parameters to track campaign performance
+6. **Test thoroughly** - Test on both fresh installs and existing users
+7. **One-time fetch** - Deferred links are typically only available on first launch
+
+## Troubleshooting
+
+### Deferred Links Not Working on iOS
+
+1. **Check ATT permission** - Both your app and Facebook app need ATT permission
+2. **Verify Facebook app is installed** - The Facebook app must be logged in
+3. **Check app configuration** - Ensure your app is properly configured in Facebook dashboard
+4. **Test on a real device** - Deferred links don't work in simulators
+
+### Links Not Being Received
+
+1. **Call fetchDeferredAppLink early** - Call it during app initialization
+2. **Check only once** - Deferred links are consumed on first fetch
+3. **Verify link format** - Ensure your deep link URLs match your app's URL scheme
+4. **Check Facebook campaign** - Verify your Facebook ad/post is configured for App Links
+
+## API Reference
+
+### AppLink Methods
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `fetchDeferredAppLink()` | `Promise<string \| null>` | Fetch deferred deep link URL |
+
+## Related Documentation
+
+- [Facebook App Links Documentation](https://developers.facebook.com/docs/applinks)
+- [iOS App Tracking Transparency](https://developer.apple.com/documentation/apptrackingtransparency)

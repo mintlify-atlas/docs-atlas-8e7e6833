@@ -1,0 +1,338 @@
+---
+title: Testing
+description: Learn how to test your React Native app with Facebook SDK integration using Jest mocks
+---
+
+## Testing with Jest
+
+The React Native FBSDK Next library includes built-in Jest mocks to make testing your Facebook integration easier. These mocks allow you to test your app's Facebook functionality without making actual API calls.
+
+## Setting Up Jest Mocks
+
+To use the provided mocks, add the following line to your Jest setup file (typically `jest.setup.js` or `setupTests.js`):
+
+```js
+jest.mock("react-native-fbsdk-next", () => require("react-native-fbsdk-next/jest/mocks").default);
+```
+
+This will automatically mock all the main Facebook SDK modules including:
+
+- `LoginManager`
+- `AccessToken`
+- `AppEventsLogger`
+- `Settings`
+- `LoginButton`
+
+## Available Mocks
+
+The mock module provides Jest mock functions for all major SDK components:
+
+### LoginManager Mocks
+
+```js
+LoginManager: {
+  logInWithPermissions: jest.fn(),
+  logOut: jest.fn(),
+}
+```
+
+### AccessToken Mocks
+
+```js
+AccessToken: {
+  refreshCurrentAccessTokenAsync: jest.fn(),
+  getCurrentAccessToken: jest.fn(),
+}
+```
+
+### AppEventsLogger Mocks
+
+```js
+AppEventsLogger: {
+  logEvent: jest.fn(),
+  logProductItem: jest.fn(),
+  logPushNotificationOpen: jest.fn(),
+  logPurchase: jest.fn(),
+  setFlushBehavior: jest.fn(),
+  setPushNotificationsDeviceToken: jest.fn(),
+  setPushNotificationsRegistrationId: jest.fn(),
+  setUserData: jest.fn(),
+  setUserID: jest.fn(),
+  clearUserID: jest.fn(),
+  flush: jest.fn(),
+  getAdvertiserID: jest.fn(),
+  getAnonymousID: jest.fn(),
+  getAttributionID: jest.fn(),
+  getUserID: jest.fn(),
+  AppEventParams: mockAppEventParams,
+  AppEvents: mockAppEvents,
+}
+```
+
+### Settings Mocks
+
+```js
+Settings: {
+  initializeSDK: jest.fn(),
+}
+```
+
+## Mocking LoginManager Behavior
+
+You can use `jest.spyOn` to customize the behavior of any mocked function. Here's an example of mocking a successful login:
+
+```js
+import { LoginManager } from "react-native-fbsdk-next";
+
+jest.spyOn(LoginManager, "logInWithPermissions").mockImplementation(() => 
+  Promise.resolve({ 
+    isCancelled: false,
+    grantedPermissions: ["public_profile", "email"],
+    declinedPermissions: []
+  })
+);
+```
+
+### Testing Login Cancellation
+
+```js
+import { LoginManager } from "react-native-fbsdk-next";
+
+jest.spyOn(LoginManager, "logInWithPermissions").mockImplementation(() => 
+  Promise.resolve({ 
+    isCancelled: true 
+  })
+);
+```
+
+### Testing Login Errors
+
+```js
+import { LoginManager } from "react-native-fbsdk-next";
+
+jest.spyOn(LoginManager, "logInWithPermissions").mockImplementation(() => 
+  Promise.reject(new Error("Login failed"))
+);
+```
+
+## Mocking AccessToken
+
+Test scenarios where a user is already logged in:
+
+```js
+import { AccessToken } from "react-native-fbsdk-next";
+
+jest.spyOn(AccessToken, "getCurrentAccessToken").mockImplementation(() => 
+  Promise.resolve({
+    accessToken: "mock-access-token-12345",
+    applicationID: "123456789",
+    userID: "987654321",
+    permissions: ["public_profile", "email"],
+    declinedPermissions: [],
+    expiredPermissions: [],
+    expirationTime: Date.now() + 3600000,
+    lastRefreshTime: Date.now(),
+    dataAccessExpirationTime: Date.now() + 7776000000,
+  })
+);
+```
+
+### Testing No Active Session
+
+```js
+import { AccessToken } from "react-native-fbsdk-next";
+
+jest.spyOn(AccessToken, "getCurrentAccessToken").mockImplementation(() => 
+  Promise.resolve(null)
+);
+```
+
+## Mocking App Events
+
+Test that your app correctly logs events:
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+it("logs a purchase event", () => {
+  const logPurchaseSpy = jest.spyOn(AppEventsLogger, "logPurchase");
+  
+  // Your code that triggers a purchase
+  myApp.completePurchase(15.99, "USD");
+  
+  expect(logPurchaseSpy).toHaveBeenCalledWith(15.99, "USD", expect.any(Object));
+});
+```
+
+## Testing Custom Components
+
+### Testing Login Button Integration
+
+```js
+import React from "react";
+import { render, fireEvent } from "@testing-library/react-native";
+import { LoginButton, AccessToken } from "react-native-fbsdk-next";
+import MyLoginScreen from "../MyLoginScreen";
+
+jest.mock("react-native-fbsdk-next");
+
+test("handles successful login", async () => {
+  const mockAccessToken = {
+    accessToken: "test-token",
+    userID: "123456",
+  };
+  
+  jest.spyOn(AccessToken, "getCurrentAccessToken")
+    .mockResolvedValue(mockAccessToken);
+  
+  const { getByText } = render(<MyLoginScreen />);
+  const loginButton = getByText("Continue with Facebook");
+  
+  fireEvent.press(loginButton);
+  
+  // Assert your login success handling
+});
+```
+
+## Testing Graph API Requests
+
+When testing components that make Graph API calls, mock the GraphRequest and GraphRequestManager:
+
+```js
+import { GraphRequest, GraphRequestManager } from "react-native-fbsdk-next";
+
+// Mock the GraphRequest module
+jest.mock("react-native-fbsdk-next", () => ({
+  ...jest.requireActual("react-native-fbsdk-next"),
+  GraphRequest: jest.fn().mockImplementation((path, config, callback) => ({
+    path,
+    config,
+    callback,
+  })),
+  GraphRequestManager: jest.fn().mockImplementation(() => ({
+    addRequest: jest.fn().mockReturnThis(),
+    start: jest.fn(function() {
+      // Simulate successful API response
+      const request = this.addRequest.mock.calls[0][0];
+      if (request.callback) {
+        request.callback(null, { id: "123", name: "Test User" });
+      }
+    }),
+  })),
+}));
+```
+
+## Best Practices
+
+1. **Reset mocks between tests**: Use `jest.clearAllMocks()` in `beforeEach()` to ensure clean test isolation
+
+```js
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+```
+
+2. **Test both success and failure scenarios**: Always test error handling and edge cases
+
+3. **Mock platform-specific behavior**: Use `Platform.OS` to test iOS and Android specific code paths
+
+```js
+import { Platform } from "react-native";
+
+beforeEach(() => {
+  Platform.OS = "ios"; // or "android"
+});
+```
+
+4. **Verify mock calls**: Use Jest's assertion methods to verify SDK methods are called correctly
+
+```js
+expect(LoginManager.logInWithPermissions).toHaveBeenCalledWith(
+  ["public_profile", "email"],
+  "enabled",
+  undefined
+);
+```
+
+## Complete Test Example
+
+Here's a complete example testing a login flow:
+
+```js
+import React from "react";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { LoginManager, AccessToken } from "react-native-fbsdk-next";
+import LoginScreen from "../screens/LoginScreen";
+
+jest.mock("react-native-fbsdk-next");
+
+describe("LoginScreen", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("successfully logs in user", async () => {
+    const mockLoginResult = {
+      isCancelled: false,
+      grantedPermissions: ["public_profile", "email"],
+    };
+    
+    const mockAccessToken = {
+      accessToken: "test-token-123",
+      userID: "123456789",
+    };
+
+    jest.spyOn(LoginManager, "logInWithPermissions")
+      .mockResolvedValue(mockLoginResult);
+    
+    jest.spyOn(AccessToken, "getCurrentAccessToken")
+      .mockResolvedValue(mockAccessToken);
+
+    const { getByTestId } = render(<LoginScreen />);
+    const loginButton = getByTestId("facebook-login-button");
+
+    fireEvent.press(loginButton);
+
+    await waitFor(() => {
+      expect(LoginManager.logInWithPermissions).toHaveBeenCalledWith(
+        ["public_profile", "email"]
+      );
+      expect(AccessToken.getCurrentAccessToken).toHaveBeenCalled();
+    });
+  });
+
+  it("handles login cancellation", async () => {
+    jest.spyOn(LoginManager, "logInWithPermissions")
+      .mockResolvedValue({ isCancelled: true });
+
+    const { getByTestId, getByText } = render(<LoginScreen />);
+    const loginButton = getByTestId("facebook-login-button");
+
+    fireEvent.press(loginButton);
+
+    await waitFor(() => {
+      expect(getByText("Login cancelled")).toBeTruthy();
+    });
+  });
+
+  it("handles login errors", async () => {
+    jest.spyOn(LoginManager, "logInWithPermissions")
+      .mockRejectedValue(new Error("Network error"));
+
+    const { getByTestId, getByText } = render(<LoginScreen />);
+    const loginButton = getByTestId("facebook-login-button");
+
+    fireEvent.press(loginButton);
+
+    await waitFor(() => {
+      expect(getByText("Login failed")).toBeTruthy();
+    });
+  });
+});
+```
+
+## See Also
+
+- [Jest Documentation](https://jestjs.io/)
+- [React Native Testing Library](https://callstack.github.io/react-native-testing-library/)
+- [Troubleshooting](/guides/troubleshooting) - Common issues and solutions

@@ -1,0 +1,221 @@
+---
+title: MessageDialog
+description: Display the Facebook Messenger Share Dialog to share content via Messenger
+---
+
+The MessageDialog component allows users to share content through Facebook Messenger. It provides a similar interface to ShareDialog but specifically targets Messenger as the sharing destination.
+
+## Methods
+
+### canShow
+
+Checks if the Messenger dialog can be shown with the provided content.
+
+```typescript
+canShow(shareContent: ShareContent): Promise<boolean>
+```
+
+<ParamField path="shareContent" type="ShareContent" required>
+  The content to be shared. Can be `ShareLinkContent`, `SharePhotoContent`, or `ShareVideoContent`.
+</ParamField>
+
+<ResponseField name="Promise<boolean>" type="boolean">
+  Returns `true` if the Messenger dialog can be shown, `false` otherwise.
+</ResponseField>
+
+#### Example
+
+```typescript
+import MessageDialog from 'react-native-fbsdk-next';
+
+const canShow = await MessageDialog.canShow({
+  contentType: 'link',
+  contentUrl: 'https://example.com',
+});
+
+if (canShow) {
+  // Show the Messenger dialog
+}
+```
+
+### show
+
+Shows the Messenger share dialog with the specified content.
+
+```typescript
+show(shareContent: ShareContent): Promise<MessageDialogResult>
+```
+
+<ParamField path="shareContent" type="ShareContent" required>
+  The content to be shared. Can be `ShareLinkContent`, `SharePhotoContent`, or `ShareVideoContent`.
+</ParamField>
+
+<ResponseField name="Promise<MessageDialogResult>" type="MessageDialogResult">
+  A promise that resolves with the share result.
+  
+  <ResponseField name="isCancelled" type="boolean">
+    Whether the user cancelled the Messenger dialog.
+  </ResponseField>
+  
+  <ResponseField name="postId" type="string">
+    The ID of the message that was created (if successful).
+  </ResponseField>
+</ResponseField>
+
+#### Example
+
+```typescript
+import MessageDialog from 'react-native-fbsdk-next';
+
+try {
+  const result = await MessageDialog.show({
+    contentType: 'link',
+    contentUrl: 'https://example.com',
+  });
+
+  if (result.isCancelled) {
+    console.log('Message share cancelled');
+  } else {
+    console.log('Message share success with postId:', result.postId);
+  }
+} catch (error) {
+  console.log('Message share fail with error:', error);
+}
+```
+
+### setShouldFailOnDataError
+
+Sets whether or not the native message dialog should fail when it encounters a data error.
+
+```typescript
+setShouldFailOnDataError(shouldFailOnDataError: boolean): void
+```
+
+<ParamField path="shouldFailOnDataError" type="boolean" required>
+  If `true`, the dialog will fail when it encounters a data error. If `false`, it will continue.
+</ParamField>
+
+#### Example
+
+```typescript
+import MessageDialog from 'react-native-fbsdk-next';
+
+// Fail on data errors
+MessageDialog.setShouldFailOnDataError(true);
+```
+
+## Types
+
+### MessageDialogResult
+
+```typescript
+type MessageDialogResult = {
+  isCancelled: boolean;
+  postId: string;
+};
+```
+
+## Complete Example
+
+### Share Link via Messenger
+
+```typescript
+import React from 'react';
+import { View, Button, Alert } from 'react-native';
+import MessageDialog from 'react-native-fbsdk-next';
+
+function ShareToMessenger() {
+  const shareLink = async () => {
+    try {
+      // Check if Messenger dialog can be shown
+      const canShow = await MessageDialog.canShow({
+        contentType: 'link',
+        contentUrl: 'https://example.com',
+      });
+
+      if (!canShow) {
+        Alert.alert('Error', 'Cannot show Messenger dialog');
+        return;
+      }
+
+      // Show the Messenger dialog
+      const result = await MessageDialog.show({
+        contentType: 'link',
+        contentUrl: 'https://example.com',
+        commonParameters: {
+          hashtag: '#MyApp',
+        },
+      });
+
+      if (result.isCancelled) {
+        Alert.alert('Cancelled', 'Share was cancelled');
+      } else {
+        Alert.alert('Success', `Shared with postId: ${result.postId}`);
+      }
+    } catch (error) {
+      Alert.alert('Error', `Share failed: ${error}`);
+    }
+  };
+
+  return (
+    <View>
+      <Button title="Share to Messenger" onPress={shareLink} />
+    </View>
+  );
+}
+
+export default ShareToMessenger;
+```
+
+### Share Photo via Messenger
+
+```typescript
+import React from 'react';
+import { View, Button, Alert } from 'react-native';
+import MessageDialog from 'react-native-fbsdk-next';
+
+function SharePhotoToMessenger() {
+  const sharePhoto = async () => {
+    try {
+      const photoContent = {
+        contentType: 'photo',
+        photos: [
+          {
+            imageUrl: 'file:///path/to/photo.jpg',
+            caption: 'Check out this photo!',
+          },
+        ],
+      };
+
+      const canShow = await MessageDialog.canShow(photoContent);
+
+      if (!canShow) {
+        Alert.alert('Error', 'Cannot show Messenger dialog');
+        return;
+      }
+
+      const result = await MessageDialog.show(photoContent);
+
+      if (!result.isCancelled) {
+        Alert.alert('Success', 'Photo shared successfully!');
+      }
+    } catch (error) {
+      Alert.alert('Error', `Share failed: ${error}`);
+    }
+  };
+
+  return (
+    <View>
+      <Button title="Share Photo to Messenger" onPress={sharePhoto} />
+    </View>
+  );
+}
+
+export default SharePhotoToMessenger;
+```
+
+## Notes
+
+- The MessageDialog requires the Facebook Messenger app to be installed on the device
+- All content types supported by ShareDialog are also supported by MessageDialog
+- See the [ShareContent documentation](/api/share-content) for details on content types

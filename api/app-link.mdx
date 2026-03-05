@@ -1,0 +1,463 @@
+---
+title: AppLink
+description: Fetch deferred deep links for app install attribution
+---
+
+The `AppLink` module provides functionality to fetch deferred deep links, which are used to attribute app installs to specific campaigns and pass contextual data to newly installed apps.
+
+## Import
+
+```typescript
+import { AppLink } from 'react-native-fbsdk-next';
+```
+
+## What are Deferred Deep Links?
+
+Deferred deep links allow you to direct users who don't have your app installed to the App Store or Google Play Store, and then deep link them to specific content after they install and open your app for the first time.
+
+**Flow:**
+1. User clicks ad or link without app installed
+2. User is redirected to App Store/Google Play
+3. User installs app
+4. User opens app for the first time
+5. App fetches deferred deep link
+6. App navigates user to intended content
+
+## Methods
+
+### fetchDeferredAppLink
+
+Retrieves the deferred app link URL if available.
+
+```typescript
+AppLink.fetchDeferredAppLink(): Promise<string | null>
+```
+
+Returns a Promise that resolves to:
+- A deep link URL string if a deferred link exists
+- `null` if no deferred link is available
+
+<Note>
+This method should be called once when the app launches for the first time after installation. Subsequent calls will return `null`.
+</Note>
+
+## Usage Examples
+
+### Basic Usage
+
+```typescript
+import { useEffect } from 'react';
+import { AppLink } from 'react-native-fbsdk-next';
+
+function App() {
+  useEffect(() => {
+    checkDeferredDeepLink();
+  }, []);
+
+  const checkDeferredDeepLink = async () => {
+    try {
+      const url = await AppLink.fetchDeferredAppLink();
+      
+      if (url) {
+        console.log('Deferred deep link:', url);
+        // Handle the deep link
+        handleDeepLink(url);
+      } else {
+        console.log('No deferred deep link');
+      }
+    } catch (error) {
+      console.error('Error fetching deferred app link:', error);
+    }
+  };
+
+  const handleDeepLink = (url: string) => {
+    // Navigate to the appropriate screen based on the URL
+    console.log('Opening deep link:', url);
+  };
+
+  return (
+    // Your app content
+  );
+}
+```
+
+### With React Navigation
+
+```typescript
+import { useEffect } from 'react';
+import { Linking } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { AppLink } from 'react-native-fbsdk-next';
+
+function App() {
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    handleDeferredDeepLink();
+  }, []);
+
+  const handleDeferredDeepLink = async () => {
+    try {
+      const url = await AppLink.fetchDeferredAppLink();
+      
+      if (url) {
+        console.log('Processing deferred deep link:', url);
+        navigateToDeepLink(url);
+      }
+    } catch (error) {
+      console.error('Error with deferred deep link:', error);
+    }
+  };
+
+  const navigateToDeepLink = (url: string) => {
+    // Parse the URL and navigate accordingly
+    const route = parseDeepLink(url);
+    
+    if (route) {
+      navigation.navigate(route.screen, route.params);
+    }
+  };
+
+  const parseDeepLink = (url: string) => {
+    // Example: myapp://product/123
+    const match = url.match(/myapp:\/\/(\w+)\/(\d+)/);
+    
+    if (match) {
+      return {
+        screen: match[1], // 'product'
+        params: { id: match[2] }, // { id: '123' }
+      };
+    }
+    
+    return null;
+  };
+
+  return (
+    // Your app content
+  );
+}
+```
+
+### With Campaign Attribution
+
+```typescript
+import { useEffect } from 'react';
+import { AppLink } from 'react-native-fbsdk-next';
+import { AppEventsLogger } from 'react-native-fbsdk-next';
+
+function App() {
+  useEffect(() => {
+    trackDeferredDeepLink();
+  }, []);
+
+  const trackDeferredDeepLink = async () => {
+    try {
+      const url = await AppLink.fetchDeferredAppLink();
+      
+      if (url) {
+        console.log('Deferred deep link received:', url);
+        
+        // Extract campaign parameters
+        const params = extractCampaignParams(url);
+        
+        // Log attribution event
+        AppEventsLogger.logEvent('DeferredDeepLinkOpened', {
+          url,
+          campaign: params.campaign || 'unknown',
+          source: params.source || 'unknown',
+        });
+        
+        // Navigate to the appropriate content
+        handleDeepLink(url);
+      }
+    } catch (error) {
+      console.error('Error fetching deferred app link:', error);
+    }
+  };
+
+  const extractCampaignParams = (url: string) => {
+    const urlObj = new URL(url);
+    return {
+      campaign: urlObj.searchParams.get('campaign'),
+      source: urlObj.searchParams.get('source'),
+      medium: urlObj.searchParams.get('medium'),
+    };
+  };
+
+  const handleDeepLink = (url: string) => {
+    // Your navigation logic
+  };
+
+  return (
+    // Your app content
+  );
+}
+```
+
+### First Launch Detection
+
+```typescript
+import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppLink } from 'react-native-fbsdk-next';
+
+const FIRST_LAUNCH_KEY = 'hasLaunchedBefore';
+
+function App() {
+  const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkFirstLaunch();
+  }, []);
+
+  const checkFirstLaunch = async () => {
+    try {
+      const hasLaunched = await AsyncStorage.getItem(FIRST_LAUNCH_KEY);
+      
+      if (!hasLaunched) {
+        // First launch - check for deferred deep link
+        setIsFirstLaunch(true);
+        await AsyncStorage.setItem(FIRST_LAUNCH_KEY, 'true');
+        
+        const url = await AppLink.fetchDeferredAppLink();
+        
+        if (url) {
+          console.log('First launch with deferred deep link:', url);
+          handleDeepLink(url);
+        } else {
+          console.log('First launch, no deferred deep link');
+          showOnboarding();
+        }
+      } else {
+        setIsFirstLaunch(false);
+        console.log('Not first launch');
+      }
+    } catch (error) {
+      console.error('Error checking first launch:', error);
+    }
+  };
+
+  const handleDeepLink = (url: string) => {
+    // Navigate to deep link content
+  };
+
+  const showOnboarding = () => {
+    // Show onboarding flow
+  };
+
+  if (isFirstLaunch === null) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    // Your app content
+  );
+}
+```
+
+### Advanced: Combining Regular and Deferred Deep Links
+
+```typescript
+import { useEffect } from 'react';
+import { Linking } from 'react-native';
+import { AppLink } from 'react-native-fbsdk-next';
+
+function App() {
+  useEffect(() => {
+    setupDeepLinking();
+  }, []);
+
+  const setupDeepLinking = async () => {
+    // Check for deferred deep link (first launch only)
+    await checkDeferredDeepLink();
+    
+    // Handle regular deep links (app already installed)
+    const initialUrl = await Linking.getInitialURL();
+    if (initialUrl) {
+      handleDeepLink(initialUrl);
+    }
+    
+    // Listen for deep links while app is running
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  };
+
+  const checkDeferredDeepLink = async () => {
+    try {
+      const url = await AppLink.fetchDeferredAppLink();
+      
+      if (url) {
+        console.log('Deferred deep link:', url);
+        handleDeepLink(url);
+      }
+    } catch (error) {
+      console.error('Error fetching deferred app link:', error);
+    }
+  };
+
+  const handleDeepLink = (url: string) => {
+    console.log('Handling deep link:', url);
+    // Your deep link routing logic
+  };
+
+  return (
+    // Your app content
+  );
+}
+```
+
+### URL Parsing Example
+
+```typescript
+import { AppLink } from 'react-native-fbsdk-next';
+
+type DeepLinkData = {
+  screen: string;
+  params: Record<string, string>;
+  campaign?: {
+    source: string;
+    medium: string;
+    campaign: string;
+  };
+};
+
+const parseDeepLinkURL = (url: string): DeepLinkData | null => {
+  try {
+    const urlObj = new URL(url);
+    
+    // Extract path components
+    // Example: myapp://product/123?campaign=summer&source=facebook
+    const pathComponents = urlObj.pathname.split('/').filter(Boolean);
+    
+    if (pathComponents.length === 0) {
+      return null;
+    }
+    
+    const [screen, ...paramValues] = pathComponents;
+    
+    // Extract query parameters
+    const params: Record<string, string> = {};
+    urlObj.searchParams.forEach((value, key) => {
+      params[key] = value;
+    });
+    
+    // Extract campaign data if present
+    const campaign = {
+      source: urlObj.searchParams.get('source') || '',
+      medium: urlObj.searchParams.get('medium') || '',
+      campaign: urlObj.searchParams.get('campaign') || '',
+    };
+    
+    return {
+      screen,
+      params: {
+        ...params,
+        id: paramValues[0] || '',
+      },
+      campaign: campaign.source ? campaign : undefined,
+    };
+  } catch (error) {
+    console.error('Error parsing deep link URL:', error);
+    return null;
+  }
+};
+
+// Usage
+const handleDeferredLink = async () => {
+  const url = await AppLink.fetchDeferredAppLink();
+  
+  if (url) {
+    const data = parseDeepLinkURL(url);
+    
+    if (data) {
+      console.log('Screen:', data.screen);
+      console.log('Params:', data.params);
+      console.log('Campaign:', data.campaign);
+    }
+  }
+};
+```
+
+## Important Considerations
+
+<Warning>
+**Call Only Once**
+
+`fetchDeferredAppLink()` should be called **only once** when the app launches for the first time after installation. Subsequent calls will return `null` as the deferred link is consumed after the first fetch.
+</Warning>
+
+<Note>
+**Testing Deferred Deep Links**
+
+Testing deferred deep links requires:
+1. Uninstalling the app completely
+2. Clicking a deep link without the app installed
+3. Installing the app from the store
+4. Opening the app and checking for the deferred link
+
+For easier testing during development, use Facebook's [App Ads Helper](https://developers.facebook.com/tools/app-ads-helper/).
+</Note>
+
+<Note>
+**Attribution Window**
+
+Deferred deep links have an attribution window (typically 7-28 days). Links clicked outside this window may not be attributed correctly.
+</Note>
+
+## URL Scheme Configuration
+
+Ensure your app is configured to handle deep links:
+
+**iOS (Info.plist):**
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>myapp</string>
+    </array>
+  </dict>
+</array>
+```
+
+**Android (AndroidManifest.xml):**
+```xml
+<intent-filter>
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="myapp" />
+</intent-filter>
+```
+
+## Best Practices
+
+1. **Call early** in the app lifecycle, ideally in your root component's `useEffect`
+2. **Handle null values** gracefully - not all installs have deferred links
+3. **Combine with regular deep links** for comprehensive deep linking support
+4. **Track attribution** using AppEventsLogger for campaign performance analysis
+5. **Parse URLs carefully** and handle malformed URLs gracefully
+6. **Test thoroughly** using both real campaigns and test tools
+7. **Don't block UI** - fetch asynchronously and show loading state if needed
+
+## Common Use Cases
+
+- **Campaign attribution** - Track which ads drive app installs
+- **Referral programs** - Direct new users to referrer's profile
+- **Product deep links** - Show specific products after install
+- **Promotional offers** - Apply discount codes from ads
+- **Content sharing** - Navigate to shared content after install
+- **Re-engagement** - Return users to specific features
+
+## Related
+
+- [AppEventsLogger](/api/app-events-logger) - Track deep link attribution events
+- [Facebook App Links](https://developers.facebook.com/docs/applinks) - App Links documentation
+- [React Native Linking](https://reactnative.dev/docs/linking) - Handle regular deep links
+- [Branch.io](https://branch.io/) - Alternative deep linking solution

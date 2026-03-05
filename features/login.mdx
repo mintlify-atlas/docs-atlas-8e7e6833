@@ -1,0 +1,345 @@
+---
+title: Facebook Login
+description: Implement Facebook login in your React Native app with LoginButton and LoginManager
+---
+
+Facebook Login allows users to authenticate with their Facebook account. The SDK provides both UI components and programmatic APIs to implement login.
+
+## LoginButton Component
+
+The easiest way to add Facebook login is using the `LoginButton` component, which renders a styled button that handles the entire login flow.
+
+### Basic Usage
+
+```jsx
+import React, { Component } from 'react';
+import { View } from 'react-native';
+import { AccessToken, LoginButton } from 'react-native-fbsdk-next';
+
+export default class Login extends Component {
+  render() {
+    return (
+      <View>
+        <LoginButton
+          onLoginFinished={
+            (error, result) => {
+              if (error) {
+                console.log("login has error: " + result.error);
+              } else if (result.isCancelled) {
+                console.log("login is cancelled.");
+              } else {
+                AccessToken.getCurrentAccessToken().then(
+                  (data) => {
+                    console.log(data.accessToken.toString())
+                  }
+                )
+              }
+            }
+          }
+          onLogoutFinished={() => console.log("logout.")}/>
+      </View>
+    );
+  }
+};
+```
+
+### Getting the Access Token
+
+After a successful login, retrieve the access token:
+
+```js
+import { AccessToken } from 'react-native-fbsdk-next';
+
+AccessToken.getCurrentAccessToken().then((data) => {
+  if (data) {
+    console.log('Access Token:', data.accessToken);
+    console.log('User ID:', data.userID);
+    console.log('Permissions:', data.permissions);
+  }
+});
+```
+
+## LoginManager API
+
+For custom UI or more control over the login flow, use the `LoginManager` API.
+
+### Requesting Permissions
+
+```js
+import { LoginManager } from "react-native-fbsdk-next";
+
+// Attempt a login using the Facebook login dialog asking for default permissions.
+LoginManager.logInWithPermissions(["public_profile"]).then(
+  function(result) {
+    if (result.isCancelled) {
+      console.log("Login cancelled");
+    } else {
+      console.log(
+        "Login success with permissions: " +
+          result.grantedPermissions.toString()
+      );
+    }
+  },
+  function(error) {
+    console.log("Login fail with error: " + error);
+  }
+);
+```
+
+### Requesting Additional Permissions
+
+```js
+// Request additional permissions like email and user_friends
+LoginManager.logInWithPermissions(["public_profile", "email", "user_friends"]).then(
+  function(result) {
+    if (!result.isCancelled) {
+      console.log("Granted permissions:", result.grantedPermissions);
+      console.log("Declined permissions:", result.declinedPermissions);
+    }
+  }
+);
+```
+
+### Logging Out
+
+```js
+import { LoginManager } from "react-native-fbsdk-next";
+
+LoginManager.logOut();
+```
+
+## Limited Login (iOS)
+
+<Note>
+Limited Login is required for iOS if using React Native FBSDK Next >= 13.0.0. It allows users who have opted out of App Tracking Transparency to still use Facebook login.
+</Note>
+
+### LoginButton with Limited Login
+
+```jsx
+import React, { Component } from 'react';
+import { Platform, View } from 'react-native';
+import {
+  AccessToken,
+  AuthenticationToken,
+  LoginButton,
+} from 'react-native-fbsdk-next';
+
+export default class Login extends Component {
+  render() {
+    return (
+      <View>
+        <LoginButton
+          onLoginFinished={(error, result) => {
+            if (error) {
+              console.log("login has error: " + result.error);
+            } else if (result.isCancelled) {
+              console.log("login is cancelled.");
+            } else {
+              if (Platform.OS === "ios") {
+                AuthenticationToken.getAuthenticationTokenIOS().then((data) => {
+                  console.log(data?.authenticationToken);
+                });
+              } else {
+                AccessToken.getCurrentAccessToken().then((data) => {
+                  console.log(data?.accessToken.toString());
+                });
+              }
+            }
+          }}
+          onLogoutFinished={() => console.log("logout.")}
+          loginTrackingIOS="limited"
+          nonceIOS="my_nonce" // Optional
+        />
+      </View>
+    );
+  }
+}
+```
+
+### LoginManager with Limited Login
+
+```js
+import {
+  AccessToken,
+  AuthenticationToken,
+  LoginManager,
+} from "react-native-fbsdk-next";
+import { Platform } from "react-native";
+
+try {
+  const result = await LoginManager.logInWithPermissions(
+    ["public_profile", "email"],
+    "limited",
+    "my_nonce", // Optional
+  );
+  
+  console.log(result);
+  
+  if (Platform.OS === "ios") {
+    // This token **cannot** be used to access the Graph API.
+    const result = await AuthenticationToken.getAuthenticationTokenIOS();
+    console.log(result?.authenticationToken);
+  } else {
+    // This token can be used to access the Graph API.
+    const result = await AccessToken.getCurrentAccessToken();
+    console.log(result?.accessToken);
+  }
+} catch (error) {
+  console.log(error);
+}
+```
+
+<Warning>
+An `AuthenticationToken` from Limited Login **cannot** be used to access the Graph API. Attempting to do so will result in an "Invalid OAuth access token" error.
+</Warning>
+
+## Login Configuration
+
+### Setting Login Behavior (Android)
+
+<Tabs>
+  <Tab title="Native with Fallback">
+    ```js
+    import { LoginManager } from "react-native-fbsdk-next";
+
+    // Attempt login using Facebook App, fall back to web dialog
+    LoginManager.setLoginBehavior('native_with_fallback');
+    ```
+  </Tab>
+  <Tab title="Native Only">
+    ```js
+    import { LoginManager } from "react-native-fbsdk-next";
+
+    // Only attempt to login using the Facebook App
+    LoginManager.setLoginBehavior('native_only');
+    ```
+  </Tab>
+  <Tab title="Web Only">
+    ```js
+    import { LoginManager } from "react-native-fbsdk-next";
+
+    // Only use web dialog auth
+    LoginManager.setLoginBehavior('web_only');
+    ```
+  </Tab>
+</Tabs>
+
+### Setting Default Audience
+
+Control who can see posts made by your app:
+
+```js
+import { LoginManager } from "react-native-fbsdk-next";
+
+// Only the user can see posts
+LoginManager.setDefaultAudience('only_me');
+
+// The user's friends can see posts
+LoginManager.setDefaultAudience('friends');
+
+// All Facebook users can see posts
+LoginManager.setDefaultAudience('everyone');
+```
+
+### Re-authorizing Data Access
+
+Request updated permissions from users:
+
+```js
+import { LoginManager } from "react-native-fbsdk-next";
+
+LoginManager.reauthorizeDataAccess().then(
+  function(result) {
+    if (!result.isCancelled) {
+      console.log("Data access reauthorized");
+    }
+  }
+);
+```
+
+## Common Login Flows
+
+<Tabs>
+  <Tab title="Basic Login">
+    ```js
+    import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+
+    async function loginWithFacebook() {
+      try {
+        const result = await LoginManager.logInWithPermissions(['public_profile']);
+        
+        if (result.isCancelled) {
+          console.log('Login cancelled');
+          return;
+        }
+        
+        const data = await AccessToken.getCurrentAccessToken();
+        console.log('Logged in with token:', data.accessToken);
+      } catch (error) {
+        console.error('Login error:', error);
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Login with Profile">
+    ```js
+    import { LoginManager, Profile } from 'react-native-fbsdk-next';
+
+    async function loginAndGetProfile() {
+      try {
+        const result = await LoginManager.logInWithPermissions(
+          ['public_profile', 'email']
+        );
+        
+        if (!result.isCancelled) {
+          const profile = await Profile.getCurrentProfile();
+          if (profile) {
+            console.log('Name:', profile.name);
+            console.log('User ID:', profile.userID);
+          }
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Available Permissions
+
+Common permissions you can request:
+
+- `public_profile` - Basic profile information (default)
+- `email` - User's email address
+- `user_friends` - List of user's friends who also use your app
+- `user_birthday` - User's birthday
+- `user_location` - User's location
+- `user_hometown` - User's hometown
+
+<Note>
+Some permissions require your app to be reviewed by Facebook before they can be used in production.
+</Note>
+
+## API Reference
+
+### LoginManager Methods
+
+| Method | Description |
+|--------|-------------|
+| `logInWithPermissions(permissions, loginTrackingIOS?, nonceIOS?)` | Log in with requested permissions |
+| `logOut()` | Log out the current user |
+| `setLoginBehavior(behavior)` | Set login behavior (Android only) |
+| `getLoginBehavior()` | Get current login behavior |
+| `setDefaultAudience(audience)` | Set default audience for posts |
+| `getDefaultAudience()` | Get current default audience |
+| `reauthorizeDataAccess()` | Re-authorize data access permissions |
+
+### LoginResult Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `isCancelled` | boolean | Whether the login was cancelled |
+| `grantedPermissions` | string[] | Permissions granted by the user |
+| `declinedPermissions` | string[] | Permissions declined by the user |

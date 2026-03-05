@@ -1,0 +1,139 @@
+---
+title: ShareButton
+description: A native button component that triggers the Facebook Share Dialog
+---
+
+The ShareButton component provides a native Facebook-styled button that automatically triggers the share dialog when pressed.
+
+## Component
+
+```typescript
+import ShareButton from 'react-native-fbsdk-next';
+
+<ShareButton
+  shareContent={shareContent}
+  style={customStyle}
+/>
+```
+
+## Props
+
+<ParamField path="shareContent" type="ShareContent" required>
+  Content to be shared when the button is pressed. Can be `ShareLinkContent`, `SharePhotoContent`, or `ShareVideoContent`.
+</ParamField>
+
+<ParamField path="style" type="ViewStyle">
+  Custom style for the button. The default style has a height of 30 and width of 80.
+</ParamField>
+
+## Examples
+
+### Basic Usage
+
+```typescript
+import React from 'react';
+import { View } from 'react-native';
+import ShareButton from 'react-native-fbsdk-next';
+
+function MyComponent() {
+  return (
+    <View>
+      <ShareButton
+        shareContent={{
+          contentType: 'link',
+          contentUrl: 'https://example.com',
+        }}
+      />
+    </View>
+  );
+}
+```
+
+### Share Link with Quote
+
+```typescript
+import React from 'react';
+import { View } from 'react-native';
+import ShareButton from 'react-native-fbsdk-next';
+
+function MyComponent() {
+  return (
+    <View>
+      <ShareButton
+        shareContent={{
+          contentType: 'link',
+          contentUrl: 'https://example.com',
+          quote: 'Check out this amazing content!',
+          commonParameters: {
+            hashtag: '#MyApp',
+          },
+        }}
+      />
+    </View>
+  );
+}
+```
+
+### Custom Styled Button
+
+```typescript
+import React from 'react';
+import { View } from 'react-native';
+import ShareButton from 'react-native-fbsdk-next';
+
+function MyComponent() {
+  return (
+    <View>
+      <ShareButton
+        shareContent={{
+          contentType: 'link',
+          contentUrl: 'https://example.com',
+        }}
+        style={{
+          height: 50,
+          width: 150,
+        }}
+      />
+    </View>
+  );
+}
+```
+
+### Share Photo
+
+```typescript
+import React from 'react';
+import { View } from 'react-native';
+import ShareButton from 'react-native-fbsdk-next';
+
+function MyComponent() {
+  return (
+    <View>
+      <ShareButton
+        shareContent={{
+          contentType: 'photo',
+          photos: [
+            {
+              imageUrl: 'file:///path/to/photo.jpg',
+              caption: 'My photo caption',
+            },
+          ],
+        }}
+      />
+    </View>
+  );
+}
+```
+
+## Default Styling
+
+The default button style is:
+
+```typescript
+{
+  height: 30,
+  width: 80,
+}
+```
+
+You can override this with your own style using the `style` prop.

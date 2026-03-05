@@ -1,0 +1,159 @@
+---
+title: ShareDialog
+description: Display the Facebook Share Dialog to share content from your app
+---
+
+The ShareDialog component allows users to share content to Facebook through a native share dialog. It supports multiple content types including links, photos, and videos.
+
+## Methods
+
+### canShow
+
+Checks if the dialog can be shown with the provided content.
+
+```typescript
+canShow(shareContent: ShareContent): Promise<boolean>
+```
+
+<ParamField path="shareContent" type="ShareContent" required>
+  The content to be shared. Can be `ShareLinkContent`, `SharePhotoContent`, or `ShareVideoContent`.
+</ParamField>
+
+<ResponseField name="Promise<boolean>" type="boolean">
+  Returns `true` if the dialog can be shown, `false` otherwise.
+</ResponseField>
+
+#### Example
+
+```typescript
+import ShareDialog from 'react-native-fbsdk-next';
+
+const canShow = await ShareDialog.canShow({
+  contentType: 'link',
+  contentUrl: 'https://example.com',
+});
+
+if (canShow) {
+  // Show the dialog
+}
+```
+
+### show
+
+Shows the share dialog with the specified content.
+
+```typescript
+show(shareContent: ShareContent): Promise<ShareDialogResult>
+```
+
+<ParamField path="shareContent" type="ShareContent" required>
+  The content to be shared. Can be `ShareLinkContent`, `SharePhotoContent`, or `ShareVideoContent`.
+</ParamField>
+
+<ResponseField name="Promise<ShareDialogResult>" type="ShareDialogResult">
+  A promise that resolves with the share result.
+  
+  <ResponseField name="isCancelled" type="boolean">
+    Whether the user cancelled the share dialog.
+  </ResponseField>
+  
+  <ResponseField name="postId" type="string">
+    The ID of the post that was created (if successful).
+  </ResponseField>
+</ResponseField>
+
+#### Example
+
+```typescript
+import ShareDialog from 'react-native-fbsdk-next';
+
+try {
+  const result = await ShareDialog.show({
+    contentType: 'link',
+    contentUrl: 'https://example.com',
+    quote: 'Check out this awesome website!',
+  });
+
+  if (result.isCancelled) {
+    console.log('Share cancelled');
+  } else {
+    console.log('Share success with postId:', result.postId);
+  }
+} catch (error) {
+  console.log('Share fail with error:', error);
+}
+```
+
+### setMode
+
+Sets the mode for the share dialog.
+
+```typescript
+setMode(mode: ShareDialogMode): void
+```
+
+<ParamField path="mode" type="ShareDialogMode" required>
+  The mode to use for the share dialog.
+  
+  **iOS modes:**
+  - `'automatic'` - Acts with the most appropriate mode that is available
+  - `'browser'` - Displays the dialog in Safari
+  - `'webview'` - Displays the dialog in a UIWebView within the app
+  - `'native'` - The native dialog is used
+  
+  **Android modes:**
+  - `'automatic'` - The mode is determined automatically
+  - `'native'` - The native dialog is used
+  - `'web'` - The web dialog is used
+  - `'feed'` - The feed dialog is used
+</ParamField>
+
+#### Example
+
+```typescript
+import ShareDialog from 'react-native-fbsdk-next';
+
+// Set to use native dialog
+ShareDialog.setMode('native');
+```
+
+### setShouldFailOnDataError
+
+Sets whether or not the native share dialog should fail when it encounters a data error.
+
+```typescript
+setShouldFailOnDataError(shouldFailOnDataError: boolean): void
+```
+
+<ParamField path="shouldFailOnDataError" type="boolean" required>
+  If `true`, the dialog will fail when it encounters a data error. If `false`, it will continue.
+</ParamField>
+
+#### Example
+
+```typescript
+import ShareDialog from 'react-native-fbsdk-next';
+
+// Fail on data errors
+ShareDialog.setShouldFailOnDataError(true);
+```
+
+## Types
+
+### ShareDialogMode
+
+```typescript
+type ShareDialogMode = ShareDialogModeIOS | ShareDialogModeAndroid;
+
+type ShareDialogModeIOS = 'automatic' | 'browser' | 'webview' | 'native';
+type ShareDialogModeAndroid = 'automatic' | 'native' | 'web' | 'feed';
+```
+
+### ShareDialogResult
+
+```typescript
+type ShareDialogResult = {
+  isCancelled: boolean;
+  postId: string;
+};
+```

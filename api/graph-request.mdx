@@ -1,0 +1,336 @@
+---
+title: GraphRequest
+description: Make requests to the Facebook Graph API
+---
+
+The `GraphRequest` class represents a single request to the Facebook Graph API and provides support for batch requests through `GraphRequestManager`.
+
+## Import
+
+```typescript
+import { GraphRequest } from 'react-native-fbsdk-next';
+```
+
+## Constructor
+
+```typescript
+new GraphRequest(
+  graphPath: string,
+  config?: GraphRequestConfig,
+  callback?: GraphRequestCallback
+)
+```
+
+<ParamField path="graphPath" type="string" required>
+  The Graph API endpoint to call (e.g., "me", "me/friends", "12345/posts").
+</ParamField>
+
+<ParamField path="config" type="GraphRequestConfig">
+  Optional configuration for the request including HTTP method, API version, parameters, and access token.
+</ParamField>
+
+<ParamField path="callback" type="GraphRequestCallback">
+  Function called when the request completes or fails.
+</ParamField>
+
+## Properties
+
+### graphPath
+
+The Graph API endpoint for this request.
+
+```typescript
+graphPath: string
+```
+
+### config
+
+The configuration object for this request.
+
+```typescript
+config: GraphRequestConfig
+```
+
+### callback
+
+The completion callback for this request.
+
+```typescript
+callback: GraphRequestCallback
+```
+
+## Methods
+
+### addStringParameter
+
+Adds a string parameter to the request.
+
+```typescript
+addStringParameter(paramString: string, key: string): void
+```
+
+<ParamField path="paramString" type="string" required>
+  The parameter value.
+</ParamField>
+
+<ParamField path="key" type="string" required>
+  The parameter key.
+</ParamField>
+
+## Usage Examples
+
+### Simple GET Request
+
+```typescript
+import { GraphRequest, GraphRequestManager } from 'react-native-fbsdk-next';
+
+const request = new GraphRequest(
+  '/me',
+  null,
+  (error, result) => {
+    if (error) {
+      console.log('Error fetching data:', error);
+    } else {
+      console.log('User data:', result);
+    }
+  }
+);
+
+new GraphRequestManager().addRequest(request).start();
+```
+
+### GET Request with Parameters
+
+```typescript
+const request = new GraphRequest(
+  '/me',
+  {
+    httpMethod: 'GET',
+    version: 'v18.0',
+    parameters: {
+      fields: {
+        string: 'id,name,email,picture',
+      },
+    },
+  },
+  (error, result) => {
+    if (error) {
+      console.log('Error:', error);
+    } else {
+      console.log('Result:', result);
+    }
+  }
+);
+
+new GraphRequestManager().addRequest(request).start();
+```
+
+### POST Request
+
+```typescript
+const request = new GraphRequest(
+  '/me/feed',
+  {
+    httpMethod: 'POST',
+    parameters: {
+      message: {
+        string: 'Hello from my React Native app!',
+      },
+    },
+  },
+  (error, result) => {
+    if (error) {
+      console.log('Post failed:', error);
+    } else {
+      console.log('Post ID:', result?.id);
+    }
+  }
+);
+
+new GraphRequestManager().addRequest(request).start();
+```
+
+### Request with Custom Access Token
+
+```typescript
+const request = new GraphRequest(
+  '/me',
+  {
+    accessToken: 'custom_access_token_here',
+    parameters: {
+      fields: {
+        string: 'id,name',
+      },
+    },
+  },
+  (error, result) => {
+    if (error) {
+      console.log('Error:', error);
+    } else {
+      console.log('Result:', result);
+    }
+  }
+);
+
+new GraphRequestManager().addRequest(request).start();
+```
+
+### Using addStringParameter
+
+```typescript
+const request = new GraphRequest(
+  '/me',
+  {
+    parameters: {},
+  },
+  (error, result) => {
+    if (error) {
+      console.log('Error:', error);
+    } else {
+      console.log('Result:', result);
+    }
+  }
+);
+
+// Add parameters after construction
+request.addStringParameter('id,name,email', 'fields');
+
+new GraphRequestManager().addRequest(request).start();
+```
+
+### Fetch User Friends
+
+```typescript
+const request = new GraphRequest(
+  '/me/friends',
+  {
+    parameters: {
+      fields: {
+        string: 'id,name,picture',
+      },
+      limit: {
+        string: '100',
+      },
+    },
+  },
+  (error, result) => {
+    if (error) {
+      console.log('Error fetching friends:', error);
+    } else {
+      console.log('Friends:', result?.data);
+    }
+  }
+);
+
+new GraphRequestManager().addRequest(request).start();
+```
+
+### Fetch User Photos
+
+```typescript
+const request = new GraphRequest(
+  '/me/photos',
+  {
+    httpMethod: 'GET',
+    parameters: {
+      fields: {
+        string: 'id,picture,created_time',
+      },
+      type: {
+        string: 'uploaded',
+      },
+    },
+  },
+  (error, result) => {
+    if (error) {
+      console.log('Error fetching photos:', error);
+    } else {
+      console.log('Photos:', result?.data);
+    }
+  }
+);
+
+new GraphRequestManager().addRequest(request).start();
+```
+
+## TypeScript Types
+
+### GraphRequestConfig
+
+Configuration object for Graph API requests.
+
+```typescript
+type GraphRequestConfig = {
+  /**
+   * The HTTP method to use (e.g., "GET", "POST", "DELETE")
+   */
+  httpMethod?: string;
+  
+  /**
+   * The Graph API version to use (e.g., "v18.0")
+   */
+  version?: string;
+  
+  /**
+   * Request parameters as key-value pairs
+   */
+  parameters?: GraphRequestParameters;
+  
+  /**
+   * Access token for the request
+   */
+  accessToken?: string;
+};
+```
+
+### GraphRequestParameters
+
+Parameters for Graph API requests.
+
+```typescript
+type GraphRequestParameters = {
+  [key: string]: unknown;
+};
+```
+
+<Note>
+When setting parameters, wrap values in an object with a `string` property:
+```typescript
+parameters: {
+  fields: { string: 'id,name,email' },
+  limit: { string: '10' },
+}
+```
+</Note>
+
+### GraphRequestCallback
+
+Callback function for handling request results.
+
+```typescript
+type GraphRequestCallback = (
+  error?: Record<string, unknown>,
+  result?: Record<string, unknown>
+) => void;
+```
+
+<ResponseField name="error" type="Record<string, unknown>">
+  Error object if the request failed, undefined otherwise.
+</ResponseField>
+
+<ResponseField name="result" type="Record<string, unknown>">
+  Response data if the request succeeded, undefined otherwise.
+</ResponseField>
+
+## Best Practices
+
+1. **Always handle errors** in your callback function
+2. **Use specific field selectors** to request only the data you need
+3. **Specify API version** in config for consistent behavior
+4. **Batch multiple requests** using `GraphRequestManager` for better performance
+5. **Check Graph API documentation** for available endpoints and parameters
+
+## Related
+
+- [GraphRequestManager](/api/graph-request-manager) - Execute single or batch requests
+- [Facebook Graph API Documentation](https://developers.facebook.com/docs/graph-api)

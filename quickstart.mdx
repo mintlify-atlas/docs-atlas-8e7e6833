@@ -1,80 +1,716 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Build your first Facebook Login integration with React Native FBSDK Next
 ---
 
-## Get started in three steps
+## Overview
 
-Get your documentation site running locally and make your first customization.
+This guide will walk you through implementing Facebook Login in your React Native app. You'll learn how to:
 
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+- Initialize the Facebook SDK
+- Add a Facebook Login button
+- Handle login callbacks
+- Access user information
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Make sure you've completed the [Installation](/installation) guide before proceeding.
 </Note>
+
+## Step 1: Initialize the SDK
+
+Before using any Facebook SDK features, you need to initialize it. Add this code to your app's entry point (usually `App.js` or `App.tsx`):
+
+```javascript
+import { Settings } from 'react-native-fbsdk-next';
+
+// Initialize the SDK as early as possible
+Settings.initializeSDK();
+```
+
+<Accordion title="Why initialize the SDK?">
+  Starting with iOS SDK v9.0.0, Facebook removed automatic initialization to comply with Apple's privacy requirements. You must explicitly initialize the SDK before using any Facebook features.
+  
+  For GDPR compliance, you may want to delay initialization until after obtaining user consent.
+</Accordion>
+
+## Step 2: Add Facebook Login Button
+
+The `LoginButton` component provides a ready-to-use Facebook-branded login button:
+
+```jsx App.js
+import React from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import { LoginButton, Settings } from 'react-native-fbsdk-next';
+
+// Initialize SDK
+Settings.initializeSDK();
+
+export default function App() {
+  return (
+    <View style={styles.container}>
+      <LoginButton
+        onLoginFinished={(error, result) => {
+          if (error) {
+            Alert.alert('Login Error', error.message);
+          } else if (result.isCancelled) {
+            Alert.alert('Login Cancelled', 'User cancelled the login process');
+          } else {
+            Alert.alert('Login Success', `Permissions: ${result.grantedPermissions?.join(', ')}`);
+          }
+        }}
+        onLogoutFinished={() => {
+          Alert.alert('Logged Out', 'User logged out successfully');
+        }}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
+  },
+});
+```
+
+<Check>
+  The LoginButton automatically shows "Log in with Facebook" when logged out and "Log out" when logged in.
+</Check>
+
+## Step 3: Request Specific Permissions
+
+By default, the login button requests `public_profile` permission. To request additional permissions:
+
+```jsx
+import React from 'react';
+import { View } from 'react-native';
+import { LoginButton } from 'react-native-fbsdk-next';
+
+export default function App() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <LoginButton
+        permissions={['public_profile', 'email', 'user_friends']}
+        onLoginFinished={(error, result) => {
+          if (error) {
+            console.log('Login failed:', error);
+          } else if (!result.isCancelled) {
+            console.log('Granted permissions:', result.grantedPermissions);
+            console.log('Declined permissions:', result.declinedPermissions);
+          }
+        }}
+        onLogoutFinished={() => console.log('User logged out')}
+      />
+    </View>
+  );
+}
+```
+
+<Warning>
+  Some permissions require Facebook App Review approval before they can be used in production. Learn more at [Facebook Login Permissions](https://developers.facebook.com/docs/permissions/reference).
+</Warning>
+
+## Step 4: Get Access Token
+
+After a successful login, retrieve the access token to make Graph API requests:
+
+```jsx
+import React, { useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { LoginButton, AccessToken, Settings } from 'react-native-fbsdk-next';
+
+Settings.initializeSDK();
+
+export default function App() {
+  const [userToken, setUserToken] = useState(null);
+
+  const handleLoginFinished = async (error, result) => {
+    if (error) {
+      console.log('Login error:', error);
+      return;
+    }
+    
+    if (result.isCancelled) {
+      console.log('Login cancelled');
+      return;
+    }
+
+    // Get the access token
+    const data = await AccessToken.getCurrentAccessToken();
+    if (data) {
+      setUserToken(data.accessToken);
+      console.log('Access Token:', data.accessToken);
+      console.log('User ID:', data.userID);
+      console.log('Permissions:', data.permissions);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <LoginButton
+        permissions={['public_profile', 'email']}
+        onLoginFinished={handleLoginFinished}
+        onLogoutFinished={() => setUserToken(null)}
+      />
+      {userToken && (
+        <Text style={styles.tokenText}>
+          Logged in! Token: {userToken.substring(0, 20)}...
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
+  },
+  tokenText: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 5,
+  },
+});
+```
+
+## Step 5: Fetch User Profile
+
+Use the Graph API to retrieve user information:
+
+```jsx
+import React, { useState } from 'react';
+import { View, Text, Image, StyleSheet } from 'react-native';
+import { 
+  LoginButton, 
+  AccessToken, 
+  GraphRequest, 
+  GraphRequestManager,
+  Settings 
+} from 'react-native-fbsdk-next';
+
+Settings.initializeSDK();
+
+export default function App() {
+  const [userInfo, setUserInfo] = useState(null);
+
+  const fetchUserInfo = async () => {
+    const currentToken = await AccessToken.getCurrentAccessToken();
+    if (!currentToken) return;
+
+    const infoRequest = new GraphRequest(
+      '/me',
+      {
+        parameters: {
+          fields: {
+            string: 'id,name,email,picture.type(large)'
+          }
+        }
+      },
+      (error, result) => {
+        if (error) {
+          console.log('Error fetching user info:', error);
+        } else {
+          setUserInfo(result);
+          console.log('User info:', result);
+        }
+      }
+    );
+
+    new GraphRequestManager().addRequest(infoRequest).start();
+  };
+
+  const handleLoginFinished = async (error, result) => {
+    if (error) {
+      console.log('Login error:', error);
+      return;
+    }
+
+    if (!result.isCancelled) {
+      await fetchUserInfo();
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <LoginButton
+        permissions={['public_profile', 'email']}
+        onLoginFinished={handleLoginFinished}
+        onLogoutFinished={() => setUserInfo(null)}
+      />
+
+      {userInfo && (
+        <View style={styles.profileContainer}>
+          <Image
+            source={{ uri: userInfo.picture?.data?.url }}
+            style={styles.profileImage}
+          />
+          <Text style={styles.nameText}>{userInfo.name}</Text>
+          <Text style={styles.emailText}>{userInfo.email}</Text>
+          <Text style={styles.idText}>ID: {userInfo.id}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
+  },
+  profileContainer: {
+    marginTop: 30,
+    alignItems: 'center',
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 10,
+  },
+  nameText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  emailText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 5,
+  },
+  idText: {
+    fontSize: 12,
+    color: '#999',
+  },
+});
+```
+
+<Note>
+  The `email` field requires the `email` permission to be granted by the user.
+</Note>
+
+## Step 6: Use Login Manager (Programmatic Login)
+
+For custom UI, use the `LoginManager` instead of the `LoginButton`:
+
+```jsx
+import React from 'react';
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { LoginManager, AccessToken, Settings } from 'react-native-fbsdk-next';
+
+Settings.initializeSDK();
+
+export default function App() {
+  const handleCustomLogin = async () => {
+    try {
+      const result = await LoginManager.logInWithPermissions([
+        'public_profile',
+        'email',
+      ]);
+
+      if (result.isCancelled) {
+        console.log('Login cancelled');
+        return;
+      }
+
+      console.log('Login success!');
+      console.log('Granted permissions:', result.grantedPermissions);
+
+      // Get access token
+      const data = await AccessToken.getCurrentAccessToken();
+      if (data) {
+        console.log('Access Token:', data.accessToken);
+      }
+    } catch (error) {
+      console.log('Login error:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    LoginManager.logOut();
+    console.log('Logged out');
+  };
+
+  return (
+    <View style={styles.container}>
+      <TouchableOpacity style={styles.loginButton} onPress={handleCustomLogin}>
+        <Text style={styles.buttonText}>Custom Login with Facebook</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.buttonText}>Logout</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
+  },
+  loginButton: {
+    backgroundColor: '#1877F2',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  logoutButton: {
+    backgroundColor: '#E4E6EB',
+    padding: 15,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
+```
+
+## iOS: Limited Login
+
+<Warning>
+  For iOS apps using React Native FBSDK Next >= 13.0.0, you may need to use Limited Login if users have opted out of App Tracking Transparency (ATT).
+</Warning>
+
+With Limited Login, you receive an `AuthenticationToken` instead of an `AccessToken`:
+
+```jsx
+import React, { useState } from 'react';
+import { View, Platform } from 'react-native';
+import { 
+  LoginButton, 
+  AccessToken, 
+  AuthenticationToken,
+  Settings 
+} from 'react-native-fbsdk-next';
+
+Settings.initializeSDK();
+
+export default function App() {
+  const handleLoginFinished = async (error, result) => {
+    if (error || result.isCancelled) {
+      console.log('Login failed or cancelled');
+      return;
+    }
+
+    if (Platform.OS === 'ios') {
+      // iOS Limited Login returns AuthenticationToken
+      const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+      if (authToken) {
+        console.log('Authentication Token:', authToken.authenticationToken);
+        // NOTE: This token CANNOT be used with Graph API
+      }
+    } else {
+      // Android returns AccessToken
+      const accessToken = await AccessToken.getCurrentAccessToken();
+      if (accessToken) {
+        console.log('Access Token:', accessToken.accessToken);
+      }
+    }
+  };
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <LoginButton
+        permissions={['public_profile', 'email']}
+        loginTrackingIOS="limited"  // Use limited tracking for iOS
+        nonceIOS="my_custom_nonce"  // Optional custom nonce
+        onLoginFinished={handleLoginFinished}
+        onLogoutFinished={() => console.log('Logged out')}
+      />
+    </View>
+  );
+}
+```
+
+<Note>
+  An `AuthenticationToken` (from Limited Login) **cannot** be used to access the Facebook Graph API. It's an OpenID Connect token used for authentication only.
+</Note>
+
+## Complete Working Example
+
+Here's a full example combining all the concepts:
+
+<CodeGroup>
+
+```jsx App.js
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
+import {
+  LoginButton,
+  AccessToken,
+  GraphRequest,
+  GraphRequestManager,
+  LoginManager,
+  Settings,
+} from 'react-native-fbsdk-next';
+
+// Initialize Facebook SDK
+Settings.initializeSDK();
+
+export default function App() {
+  const [userInfo, setUserInfo] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Check if user is already logged in
+    checkLoginStatus();
+  }, []);
+
+  const checkLoginStatus = async () => {
+    const currentToken = await AccessToken.getCurrentAccessToken();
+    if (currentToken) {
+      fetchUserInfo();
+    }
+  };
+
+  const fetchUserInfo = async () => {
+    setLoading(true);
+    const currentToken = await AccessToken.getCurrentAccessToken();
+    
+    if (!currentToken) {
+      setLoading(false);
+      return;
+    }
+
+    const infoRequest = new GraphRequest(
+      '/me',
+      {
+        parameters: {
+          fields: {
+            string: 'id,name,email,picture.type(large)',
+          },
+        },
+      },
+      (error, result) => {
+        setLoading(false);
+        if (error) {
+          console.log('Error fetching user info:', error);
+        } else {
+          setUserInfo(result);
+        }
+      }
+    );
+
+    new GraphRequestManager().addRequest(infoRequest).start();
+  };
+
+  const handleLoginFinished = async (error, result) => {
+    if (error) {
+      console.log('Login error:', error);
+      return;
+    }
+
+    if (result.isCancelled) {
+      console.log('Login cancelled');
+      return;
+    }
+
+    console.log('Login success!');
+    await fetchUserInfo();
+  };
+
+  const handleLogout = () => {
+    LoginManager.logOut();
+    setUserInfo(null);
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#1877F2" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Facebook Login Demo</Text>
+
+      {!userInfo ? (
+        <LoginButton
+          permissions={['public_profile', 'email']}
+          onLoginFinished={handleLoginFinished}
+          onLogoutFinished={() => setUserInfo(null)}
+        />
+      ) : (
+        <View style={styles.profileContainer}>
+          <Image
+            source={{ uri: userInfo.picture?.data?.url }}
+            style={styles.profileImage}
+          />
+          <Text style={styles.nameText}>{userInfo.name}</Text>
+          <Text style={styles.emailText}>{userInfo.email || 'No email'}</Text>
+          <Text style={styles.idText}>ID: {userInfo.id}</Text>
+
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    color: '#1877F2',
+  },
+  profileContainer: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 15,
+    borderWidth: 3,
+    borderColor: '#1877F2',
+  },
+  nameText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#333',
+  },
+  emailText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 5,
+  },
+  idText: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 20,
+  },
+  logoutButton: {
+    backgroundColor: '#E4E6EB',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 6,
+  },
+  logoutButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+```
+
+</CodeGroup>
+
+## Testing Your Integration
+
+<Steps>
+  <Step title="Test in Development">
+    Run your app on a real device or simulator:
+    
+    ```bash
+    # iOS
+    npx react-native run-ios
+    
+    # Android
+    npx react-native run-android
+    ```
+  </Step>
+
+  <Step title="Verify Login Flow">
+    - Tap the Facebook Login button
+    - Complete the authentication flow
+    - Verify that user data is displayed correctly
+    - Test logout functionality
+  </Step>
+
+  <Step title="Check Facebook App Dashboard">
+    Monitor login events in your Facebook App Dashboard under **Analytics > Events**.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Login button doesn't respond">
+    - Ensure you've called `Settings.initializeSDK()`
+    - Verify your Facebook App ID is correctly configured
+    - Check that native setup is complete (Info.plist on iOS, AndroidManifest.xml on Android)
+  </Accordion>
+
+  <Accordion title="'Invalid OAuth access token' error">
+    This error occurs when:
+    - Using an `AuthenticationToken` (from Limited Login) with Graph API
+    - Access token has expired
+    - Facebook App is in Development mode and the user is not a tester/admin
+    
+    **Solution:** Use `loginTrackingIOS="enabled"` for standard login with Graph API access.
+  </Accordion>
+
+  <Accordion title="Email field is null">
+    - Ensure you've requested the `email` permission
+    - User must approve the email permission
+    - Some users may not have an email associated with their Facebook account
+  </Accordion>
+
+  <Accordion title="App crashes on iOS">
+    - Verify you've added the `openURL` method in AppDelegate
+    - Check that Facebook App ID is in Info.plist
+    - Ensure CocoaPods dependencies are properly installed
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Sharing Content" icon="share-nodes" href="/sharing">
+    Learn how to share links, photos, and videos to Facebook
+  </Card>
+  
+  <Card title="Graph API" icon="diagram-project" href="/graph-api">
+    Make advanced requests to Facebook's Graph API
+  </Card>
+  
+  <Card title="App Events" icon="chart-line" href="/app-events">
+    Track user actions and conversions for analytics
+  </Card>
+  
+  <Card title="Advanced Login" icon="lock" href="/advanced-login">
+    Implement custom login flows and handle permissions
+  </Card>
+</CardGroup>

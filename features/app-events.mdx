@@ -1,0 +1,497 @@
+---
+title: App Events
+description: Track user actions and conversions with Facebook App Events
+---
+
+App Events allow you to track user actions in your app and measure the effectiveness of your Facebook ads. The SDK provides robust event logging capabilities for both standard and custom events.
+
+## Basic Event Logging
+
+### Logging Standard Events
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+// Log a standard event
+AppEventsLogger.logEvent(
+  AppEventsLogger.AppEvents.CompletedRegistration,
+  {
+    [AppEventsLogger.AppEventParams.RegistrationMethod]: "email",
+  }
+);
+```
+
+### Logging Custom Events
+
+<Tabs>
+  <Tab title="Simple Event">
+    ```js
+    import { AppEventsLogger } from "react-native-fbsdk-next";
+
+    // Log an event with just a name
+    AppEventsLogger.logEvent("button_clicked");
+    ```
+  </Tab>
+  <Tab title="Event with Value">
+    ```js
+    import { AppEventsLogger } from "react-native-fbsdk-next";
+
+    // Log an event with a value to sum
+    AppEventsLogger.logEvent("credits_spent", 100);
+    ```
+  </Tab>
+  <Tab title="Event with Parameters">
+    ```js
+    import { AppEventsLogger } from "react-native-fbsdk-next";
+
+    // Log an event with parameters
+    AppEventsLogger.logEvent("level_completed", {
+      level: "5",
+      score: "1250",
+      time: "180",
+    });
+    ```
+  </Tab>
+  <Tab title="Event with Value and Parameters">
+    ```js
+    import { AppEventsLogger } from "react-native-fbsdk-next";
+
+    // Log an event with both value and parameters
+    AppEventsLogger.logEvent(
+      "item_purchased",
+      29.99,
+      {
+        item_id: "SKU_12345",
+        category: "electronics",
+        quantity: "1",
+      }
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Purchase Events
+
+### Log a Purchase
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+// Log a $15 purchase in USD
+AppEventsLogger.logPurchase(15, "USD", { param: "value" });
+```
+
+### Purchase with Details
+
+```js
+AppEventsLogger.logPurchase(
+  99.99,
+  "USD",
+  {
+    [AppEventsLogger.AppEventParams.ContentType]: "product",
+    [AppEventsLogger.AppEventParams.ContentID]: "PROD_12345",
+    [AppEventsLogger.AppEventParams.NumItems]: "2",
+    [AppEventsLogger.AppEventParams.Currency]: "USD",
+  }
+);
+```
+
+### Multi-Currency Support
+
+```js
+// Purchase in Euros
+AppEventsLogger.logPurchase(25.50, "EUR", {
+  product_name: "Premium Subscription",
+  duration: "monthly",
+});
+
+// Purchase in British Pounds
+AppEventsLogger.logPurchase(19.99, "GBP", {
+  product_name: "In-App Currency",
+  package: "starter_pack",
+});
+```
+
+## Standard Events
+
+The SDK provides predefined events for common app actions:
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+// Completed Registration
+AppEventsLogger.logEvent(
+  AppEventsLogger.AppEvents.CompletedRegistration,
+  {
+    [AppEventsLogger.AppEventParams.RegistrationMethod]: "email",
+  }
+);
+
+// Added to Cart
+AppEventsLogger.logEvent(
+  AppEventsLogger.AppEvents.AddedToCart,
+  15.99,
+  {
+    [AppEventsLogger.AppEventParams.ContentType]: "product",
+    [AppEventsLogger.AppEventParams.ContentID]: "SKU_001",
+    [AppEventsLogger.AppEventParams.Currency]: "USD",
+  }
+);
+
+// Initiated Checkout
+AppEventsLogger.logEvent(
+  AppEventsLogger.AppEvents.InitiatedCheckout,
+  50.00,
+  {
+    [AppEventsLogger.AppEventParams.NumItems]: "3",
+    [AppEventsLogger.AppEventParams.PaymentInfoAvailable]: "1",
+  }
+);
+
+// Completed Tutorial
+AppEventsLogger.logEvent(
+  AppEventsLogger.AppEvents.CompletedTutorial,
+  {
+    tutorial_name: "getting_started",
+  }
+);
+
+// Achieved Level
+AppEventsLogger.logEvent(
+  AppEventsLogger.AppEvents.AchievedLevel,
+  {
+    [AppEventsLogger.AppEventParams.Level]: "10",
+  }
+);
+
+// Viewed Content
+AppEventsLogger.logEvent(
+  AppEventsLogger.AppEvents.ViewedContent,
+  {
+    [AppEventsLogger.AppEventParams.ContentType]: "article",
+    [AppEventsLogger.AppEventParams.ContentID]: "article_123",
+  }
+);
+```
+
+## User Management
+
+### Setting User ID
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+// Set a custom user ID
+AppEventsLogger.setUserID("user_12345");
+
+// Clear the user ID (e.g., on logout)
+AppEventsLogger.setUserID(null);
+```
+
+### Getting User IDs
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+// Get the current user ID
+const userID = await AppEventsLogger.getUserID();
+console.log("User ID:", userID);
+
+// Get anonymous ID
+const anonymousID = await AppEventsLogger.getAnonymousID();
+console.log("Anonymous ID:", anonymousID);
+
+// Get advertiser ID
+const advertiserID = await AppEventsLogger.getAdvertiserID();
+console.log("Advertiser ID:", advertiserID);
+
+// Get attribution ID (Android only)
+const attributionID = await AppEventsLogger.getAttributionID();
+console.log("Attribution ID:", attributionID);
+```
+
+### Setting User Data
+
+Provide user data for advanced matching:
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+AppEventsLogger.setUserData({
+  email: "user@example.com",
+  firstName: "John",
+  lastName: "Doe",
+  phone: "+1234567890",
+  dateOfBirth: "1990-01-01",
+  gender: "m",
+  city: "Seattle",
+  state: "WA",
+  zip: "98101",
+  country: "US",
+});
+```
+
+## Product Catalog Events
+
+### Log Product Item
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+AppEventsLogger.logProductItem(
+  "SKU_12345",              // itemID
+  "in_stock",               // availability
+  "new",                    // condition
+  "Premium Headphones",     // description
+  "https://example.com/headphones.jpg",  // imageLink
+  "https://example.com/product/12345",   // link
+  "Wireless Headphones",    // title
+  99.99,                    // priceAmount
+  "USD",                    // currency
+  "1234567890123",          // gtin (optional)
+  "MPN-12345",              // mpn (optional)
+  "AudioBrand",             // brand (optional)
+  {
+    color: "black",
+    size: "medium",
+  }
+);
+```
+
+### Product Availability Options
+
+```js
+// Available options for product availability:
+"in_stock"              // Item ships immediately
+"out_of_stock"          // No plan to restock
+"preorder"              // Available in future
+"avaliable_for_order"   // Ships in 1-2 weeks
+"discontinued"          // Discontinued
+```
+
+## Push Notifications
+
+### Log Push Notification Open
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+// Log when a push notification is opened
+AppEventsLogger.logPushNotificationOpen({
+  campaign: "summer_sale",
+  action: "opened",
+});
+```
+
+### Setting Device Tokens
+
+<Tabs>
+  <Tab title="iOS">
+    ```js
+    import { AppEventsLogger } from "react-native-fbsdk-next";
+
+    // Set push notification device token for iOS
+    AppEventsLogger.setPushNotificationsDeviceToken(deviceToken);
+    ```
+  </Tab>
+  <Tab title="Android">
+    ```js
+    import { AppEventsLogger } from "react-native-fbsdk-next";
+
+    // Set push notification registration ID for Android
+    AppEventsLogger.setPushNotificationsRegistrationId(registrationId);
+    ```
+  </Tab>
+</Tabs>
+
+## Flush Behavior
+
+### Setting Flush Behavior
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+// Auto flush: every 15 seconds or after 100 events (default)
+AppEventsLogger.setFlushBehavior('auto');
+
+// Manual flush only
+AppEventsLogger.setFlushBehavior('explicit_only');
+```
+
+### Manual Flush
+
+```js
+import { AppEventsLogger } from "react-native-fbsdk-next";
+
+// Explicitly flush events to Facebook
+AppEventsLogger.flush();
+```
+
+## Aggregated Event Measurement (AEM) for iOS
+
+<Note>
+AEM allows measurement of app events from iOS 14.5+ users who have opted out of app tracking.
+</Note>
+
+### Setup AEM in AppDelegate
+
+First, configure AEM in your iOS AppDelegate:
+
+```objc
+#import <FBAEMKit/FBAEMKit-Swift.h>
+
+// In application:openURL:options:
+[FBAEMReporter configureWithNetworker:nil appID:@"{app-id}" reporter:nil];
+[FBAEMReporter enable];
+[FBAEMReporter handle:url];
+```
+
+### Logging AEM Events
+
+```js
+import { AEMReporterIOS, AppEventsLogger } from 'react-native-fbsdk-next';
+
+// Helper function to log to both AppEvents and AEM
+const logPurchase = (
+  purchaseAmount: number,
+  currencyCode: string,
+  parameters?: Record<string, string | number>
+) => {
+  AppEventsLogger.logPurchase(purchaseAmount, currencyCode, parameters);
+  AEMReporterIOS.logAEMEvent("fb_mobile_purchase", purchaseAmount, currencyCode, parameters);
+};
+
+// Usage
+logPurchase(29.99, "USD", {
+  product_id: "SKU_001",
+  category: "electronics",
+});
+```
+
+### Logging Custom AEM Events
+
+```js
+import { AEMReporterIOS, AppEventsLogger } from 'react-native-fbsdk-next';
+
+const logEvent = (
+  eventName: string,
+  valueToSum: number,
+  parameters: Record<string, string | number>
+) => {
+  AppEventsLogger.logEvent(eventName, valueToSum, parameters);
+  AEMReporterIOS.logAEMEvent(
+    eventName,
+    valueToSum,
+    parameters.fb_currency,
+    parameters
+  );
+};
+
+// Usage
+logEvent("subscription_started", 9.99, {
+  fb_currency: "USD",
+  plan: "monthly",
+  tier: "premium",
+});
+```
+
+<Note>
+`logAEMEvent` is safe to call on Android - it will do nothing if the platform is not iOS.
+</Note>
+
+## Complete Example
+
+```jsx
+import React, { useEffect } from 'react';
+import { View, Button } from 'react-native';
+import { AppEventsLogger } from 'react-native-fbsdk-next';
+
+export default function ShoppingApp() {
+  useEffect(() => {
+    // Set user ID when user logs in
+    AppEventsLogger.setUserID('user_12345');
+    
+    // Set user data for better matching
+    AppEventsLogger.setUserData({
+      email: 'user@example.com',
+      firstName: 'John',
+    });
+    
+    return () => {
+      // Clear user ID on component unmount
+      AppEventsLogger.setUserID(null);
+    };
+  }, []);
+
+  const handleAddToCart = () => {
+    AppEventsLogger.logEvent(
+      AppEventsLogger.AppEvents.AddedToCart,
+      19.99,
+      {
+        [AppEventsLogger.AppEventParams.ContentType]: 'product',
+        [AppEventsLogger.AppEventParams.ContentID]: 'PROD_001',
+        [AppEventsLogger.AppEventParams.Currency]: 'USD',
+      }
+    );
+  };
+
+  const handlePurchase = () => {
+    AppEventsLogger.logPurchase(19.99, 'USD', {
+      [AppEventsLogger.AppEventParams.ContentType]: 'product',
+      [AppEventsLogger.AppEventParams.ContentID]: 'PROD_001',
+      [AppEventsLogger.AppEventParams.NumItems]: '1',
+    });
+  };
+
+  return (
+    <View>
+      <Button title="Add to Cart" onPress={handleAddToCart} />
+      <Button title="Purchase" onPress={handlePurchase} />
+    </View>
+  );
+}
+```
+
+## API Reference
+
+### AppEventsLogger Methods
+
+| Method | Description |
+|--------|-------------|
+| `logEvent(name, valueOrParams?, params?)` | Log a custom event |
+| `logPurchase(amount, currency, params?)` | Log a purchase |
+| `logProductItem(...)` | Log a product catalog item |
+| `logPushNotificationOpen(payload?)` | Log push notification open |
+| `setUserID(userID)` | Set custom user ID |
+| `getUserID()` | Get current user ID |
+| `getAnonymousID()` | Get anonymous ID |
+| `getAdvertiserID()` | Get advertiser ID |
+| `getAttributionID()` | Get attribution ID (Android) |
+| `setUserData(userData)` | Set user data for matching |
+| `setFlushBehavior(behavior)` | Set flush behavior |
+| `flush()` | Manually flush events |
+
+### Standard Events
+
+- `AppEvents.CompletedRegistration`
+- `AppEvents.AddedToCart`
+- `AppEvents.AddedToWishlist`
+- `AppEvents.InitiatedCheckout`
+- `AppEvents.Purchased`
+- `AppEvents.ViewedContent`
+- `AppEvents.AchievedLevel`
+- `AppEvents.CompletedTutorial`
+- `AppEvents.Searched`
+- `AppEvents.Rated`
+- `AppEvents.Subscribe`
+
+### Standard Parameters
+
+- `AppEventParams.ContentType`
+- `AppEventParams.ContentID`
+- `AppEventParams.Currency`
+- `AppEventParams.NumItems`
+- `AppEventParams.RegistrationMethod`
+- `AppEventParams.PaymentInfoAvailable`
+- `AppEventParams.Level`
+- `AppEventParams.Success`

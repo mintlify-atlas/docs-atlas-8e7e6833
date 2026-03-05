@@ -1,0 +1,423 @@
+---
+title: GameRequestDialog
+description: Send game requests to Facebook friends
+icon: gamepad
+---
+
+The `GameRequestDialog` module allows you to display a dialog for sending game requests to Facebook friends, inviting them to play your game or sending in-game gifts.
+
+## Import
+
+```typescript
+import { GameRequestDialog } from 'react-native-fbsdk-next';
+```
+
+## Methods
+
+### canShow
+
+Checks whether the game request dialog can be displayed.
+
+```typescript
+GameRequestDialog.canShow(): Promise<boolean>
+```
+
+Returns a Promise that resolves to `true` if the dialog can be shown, `false` otherwise.
+
+**Example:**
+
+```typescript
+const canShowDialog = await GameRequestDialog.canShow();
+
+if (canShowDialog) {
+  console.log('Game request dialog is available');
+} else {
+  console.log('Game request dialog is not available');
+}
+```
+
+### show
+
+Displays the game request dialog with the specified content.
+
+```typescript
+GameRequestDialog.show(
+  gameRequestContent: GameRequestContent
+): Promise<GameRequestDialogResult>
+```
+
+<ParamField path="gameRequestContent" type="GameRequestContent" required>
+  Configuration object defining the game request content, recipients, and behavior.
+</ParamField>
+
+Returns a Promise that resolves to a `GameRequestDialogResult` object containing the request ID and recipient list.
+
+## Usage Examples
+
+### Simple Game Request
+
+```typescript
+import { GameRequestDialog } from 'react-native-fbsdk-next';
+
+const sendGameRequest = async () => {
+  try {
+    const result = await GameRequestDialog.show({
+      message: 'Join me in this awesome game!',
+    });
+
+    if (!result.isCancelled) {
+      console.log('Request sent!');
+      console.log('Request ID:', result.requestId);
+      console.log('Recipients:', result.to);
+    } else {
+      console.log('Request cancelled');
+    }
+  } catch (error) {
+    console.log('Error showing game request dialog:', error);
+  }
+};
+```
+
+### Send Request with Title
+
+```typescript
+const sendInvite = async () => {
+  const result = await GameRequestDialog.show({
+    message: 'I need your help to complete this level!',
+    title: 'Help Me Out!',
+  });
+
+  if (!result.isCancelled) {
+    console.log('Invitation sent to:', result.to);
+  }
+};
+```
+
+### Send Gift to Friends
+
+```typescript
+const sendGift = async () => {
+  const result = await GameRequestDialog.show({
+    message: 'I sent you a special gift!',
+    title: 'Gift for You',
+    actionType: 'send',
+    objectId: 'gift_12345',
+    data: JSON.stringify({ type: 'gold', amount: 100 }),
+  });
+
+  if (!result.isCancelled) {
+    console.log('Gift sent! Request ID:', result.requestId);
+  }
+};
+```
+
+### Ask for Items
+
+```typescript
+const askForHelp = async () => {
+  const result = await GameRequestDialog.show({
+    message: 'Can you send me some energy?',
+    title: 'Need Energy',
+    actionType: 'askfor',
+    objectId: 'energy_item',
+  });
+
+  if (!result.isCancelled) {
+    console.log('Request sent to:', result.to.length, 'friends');
+  }
+};
+```
+
+### Turn-Based Game Request
+
+```typescript
+const inviteToTurn = async () => {
+  const result = await GameRequestDialog.show({
+    message: "It's your turn to play!",
+    title: 'Your Turn',
+    actionType: 'turn',
+    objectId: 'game_session_789',
+    data: JSON.stringify({
+      gameId: 'session_789',
+      currentScore: 1250,
+    }),
+  });
+
+  if (!result.isCancelled) {
+    console.log('Turn invitation sent');
+  }
+};
+```
+
+### Send to Specific Recipients
+
+```typescript
+const sendToFriends = async (friendIds: string[]) => {
+  const result = await GameRequestDialog.show({
+    message: 'Join me in the game!',
+    recipients: friendIds,
+  });
+
+  if (!result.isCancelled) {
+    console.log('Sent to:', result.to);
+  }
+};
+
+// Usage
+sendToFriends(['user_id_1', 'user_id_2', 'user_id_3']);
+```
+
+### Filter by App Users
+
+```typescript
+const inviteAppUsers = async () => {
+  const result = await GameRequestDialog.show({
+    message: 'Challenge me in the arena!',
+    title: 'Arena Challenge',
+    filters: 'app_users', // Only show friends who use the app
+  });
+
+  if (!result.isCancelled) {
+    console.log('Challenge sent!');
+  }
+};
+```
+
+### Invite Non-Users
+
+```typescript
+const inviteNewPlayers = async () => {
+  const result = await GameRequestDialog.show({
+    message: 'Try this amazing game!',
+    title: 'Play With Me',
+    filters: 'app_non_users', // Only show friends who don't use the app
+  });
+
+  if (!result.isCancelled) {
+    console.log('Invitations sent to new players');
+  }
+};
+```
+
+### With Suggested Friends
+
+```typescript
+const suggestFriends = async () => {
+  const result = await GameRequestDialog.show({
+    message: 'Join our team!',
+    title: 'Team Invitation',
+    suggestions: ['user_id_1', 'user_id_2'], // Show these friends first
+  });
+
+  if (!result.isCancelled) {
+    console.log('Team invitation sent');
+  }
+};
+```
+
+### Complete Example with Error Handling
+
+```typescript
+import React from 'react';
+import { Button, Alert } from 'react-native';
+import { GameRequestDialog } from 'react-native-fbsdk-next';
+
+const GameInviteButton = () => {
+  const sendInvitation = async () => {
+    try {
+      // Check if dialog can be shown
+      const canShow = await GameRequestDialog.canShow();
+      
+      if (!canShow) {
+        Alert.alert('Error', 'Game request dialog is not available');
+        return;
+      }
+
+      // Show the dialog
+      const result = await GameRequestDialog.show({
+        message: 'Join me in this epic adventure!',
+        title: 'Game Invitation',
+        actionType: 'send',
+        data: JSON.stringify({
+          level: 5,
+          reward: 'bonus_coins',
+        }),
+      });
+
+      if (result.isCancelled) {
+        console.log('User cancelled the request');
+      } else {
+        Alert.alert(
+          'Success!',
+          `Invitation sent to ${result.to.length} friend(s)`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Track the request
+                console.log('Request ID:', result.requestId);
+                console.log('Recipients:', result.to);
+              },
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Game request error:', error);
+      Alert.alert('Error', 'Failed to send game request');
+    }
+  };
+
+  return (
+    <Button
+      title="Invite Friends"
+      onPress={sendInvitation}
+    />
+  );
+};
+
+export default GameInviteButton;
+```
+
+## TypeScript Types
+
+### GameRequestContent
+
+Configuration for a game request.
+
+```typescript
+type GameRequestContent = {
+  /**
+   * A plain-text message to be sent as part of the request (required)
+   */
+  message: string;
+
+  /**
+   * Defines the nature of the request
+   */
+  actionType?: ActionType;
+
+  /**
+   * Additional freeform data for tracking (max 255 characters)
+   */
+  data?: string;
+
+  /**
+   * Controls which friends are shown in the selector
+   */
+  filters?: Filters;
+
+  /**
+   * Open Graph object ID being sent/asked for
+   * Required if actionType is 'send' or 'askfor'
+   */
+  objectId?: string;
+
+  /**
+   * Array of user IDs to send requests to
+   */
+  recipients?: Array<string>;
+
+  /**
+   * Array of user IDs shown first in the dialog
+   * Cannot be used with filters
+   */
+  suggestions?: Array<string>;
+
+  /**
+   * Title for the dialog
+   */
+  title?: string;
+};
+```
+
+### ActionType
+
+Defines the type of game request.
+
+```typescript
+type ActionType =
+  | 'send'    // Sending an object to friends
+  | 'askfor'  // Asking for an object from friends
+  | 'turn';   // Friends' turn to play in a match
+```
+
+### Filters
+
+Controls which friends are displayed in the selector.
+
+```typescript
+type Filters =
+  | 'app_users'      // Only friends using the app
+  | 'app_non_users'; // Only friends not using the app
+```
+
+### GameRequestDialogResult
+
+Result object returned when the dialog completes.
+
+```typescript
+type GameRequestDialogResult = {
+  /**
+   * Whether the user cancelled the dialog
+   */
+  isCancelled: boolean;
+
+  /**
+   * The ID of the created request
+   */
+  requestId: string;
+
+  /**
+   * Array of user IDs that received the request
+   */
+  to: Array<string>;
+};
+```
+
+## Important Notes
+
+<Warning>
+**Action Type Requirements:**
+- When using `actionType: 'send'` or `actionType: 'askfor'`, the `objectId` parameter is **required**
+- The `objectId` refers to an Open Graph object representing the item being sent or requested
+</Warning>
+
+<Note>
+**Filters vs Suggestions:**
+- `filters` and `suggestions` cannot be used together
+- Use `filters` to show only certain types of friends (app users vs non-users)
+- Use `suggestions` to prioritize specific friends in the dialog
+</Note>
+
+<Note>
+**Data Parameter:**
+- The `data` field has a maximum length of 255 characters
+- Use it to pass custom tracking information or game state
+- Consider using `JSON.stringify()` for structured data
+</Note>
+
+## Best Practices
+
+1. **Always check `canShow()`** before attempting to display the dialog
+2. **Handle cancellation** gracefully - users may close the dialog
+3. **Keep messages concise** and engaging
+4. **Use actionType appropriately** for different request scenarios
+5. **Include custom data** to track request context
+6. **Limit recipient lists** to avoid overwhelming users
+7. **Test with both app users and non-users** to verify filters work correctly
+
+## Common Use Cases
+
+- **Invite friends** to download and play your game
+- **Send gifts** or bonuses to existing players
+- **Request help** with challenging levels or tasks
+- **Challenge friends** to beat your score
+- **Notify turn-based** game opponents when it's their turn
+- **Share achievements** and invite friends to compete
+
+## Related
+
+- [LoginManager](/api/login-manager) - Authenticate users before sending requests
+- [AppEventsLogger](/api/app-events-logger) - Track game request metrics
+- [Facebook Game Requests Documentation](https://developers.facebook.com/docs/games/requests)

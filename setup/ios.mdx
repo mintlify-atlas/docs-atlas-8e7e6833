@@ -1,0 +1,311 @@
+---
+title: iOS Setup
+description: Configure React Native FBSDK Next for iOS apps
+---
+
+## Prerequisites
+
+Before setting up the iOS SDK, ensure you have:
+
+- Completed the [Facebook App Setup](https://developers.facebook.com/docs/ios/use-cocoapods) (steps 2, 3, and 4)
+- Added the library via npm/yarn
+- Run `pod install` in your `ios/` directory
+
+## Installation
+
+<Steps>
+  <Step title="Install CocoaPods dependencies">
+    After installing the npm package, navigate to your iOS directory and install pods:
+    
+    ```bash
+    cd ios && pod install
+    ```
+  </Step>
+
+  <Step title="Configure Info.plist">
+    Add your Facebook App ID, Display Name, and other required keys to `ios/Info.plist`:
+    
+    ```xml
+    <key>FacebookAppID</key>
+    <string>YOUR_APP_ID</string>
+    <key>FacebookDisplayName</key>
+    <string>YOUR_APP_NAME</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>fbYOUR_APP_ID</string>
+        </array>
+      </dict>
+    </array>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+      <string>fbapi</string>
+      <string>fb-messenger-share-api</string>
+    </array>
+    ```
+  </Step>
+
+  <Step title="Add App Tracking Transparency permission">
+    For iOS 14+, add the App Tracking Transparency usage description:
+    
+    ```xml
+    <key>NSUserTrackingUsageDescription</key>
+    <string>This identifier will be used to deliver personalized ads to you.</string>
+    ```
+  </Step>
+
+  <Step title="Configure AppDelegate">
+    The configuration differs based on your React Native version:
+  </Step>
+</Steps>
+
+## AppDelegate Configuration
+
+<Tabs>
+  <Tab title="React Native >= 0.77 (Swift)">
+    Since React Native 0.77, Swift is natively supported. Configure `AppDelegate.swift`:
+
+    ### 1. Add Required Imports
+
+    ```swift
+    import FBSDKCoreKit              // <- Add This Import
+    import AppTrackingTransparency   // <- Add This Import
+
+    // Remove this if present:
+    // import FacebookCore           // <- REMOVE if present
+    ```
+
+    ### 2. Initialize Facebook SDK
+
+    Add this to your `didFinishLaunchingWithOptions` method:
+
+    ```swift
+    public override func application(
+      _ application: UIApplication,
+      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+      
+      // ... your existing code ...
+      
+      // Initialize Facebook SDK
+      ApplicationDelegate.shared.application(
+        application,
+        didFinishLaunchingWithOptions: launchOptions
+      )
+      
+      // Request App Tracking Transparency authorization (iOS 14+)
+      if #available(iOS 14, *) {
+        ATTrackingManager.requestTrackingAuthorization { _ in
+          AppEvents.shared.activateApp()
+        }
+      } else {
+        AppEvents.shared.activateApp()
+      }
+      
+      // ... rest of your code ...
+      
+      return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+    ```
+
+    ### 3. Add openURL Method for Facebook SSO
+
+    <Warning>
+      This method is **required** for Facebook login to work when the Facebook app is installed on the device.
+    </Warning>
+
+    ```swift
+    public override func application(
+      _ app: UIApplication,
+      open url: URL,
+      options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+      // Facebook SDK must be checked FIRST
+      let handledByFB = ApplicationDelegate.shared.application(
+        app, open: url, options: options)
+      
+      // Then call super
+      let handledBySuper = super.application(
+        app, open: url, options: options)
+      
+      return handledByFB || handledBySuper
+    }
+    ```
+
+    ### 4. (Optional) Activate App When It Becomes Active
+
+    ```swift
+    open override func applicationDidBecomeActive(_ application: UIApplication) {
+      super.applicationDidBecomeActive(application)
+      AppEvents.shared.activateApp()
+    }
+    ```
+
+    ### With Deep Linking (RCTLinkingManager)
+
+    If you're using React Native's deep linking, modify the `openURL` method:
+
+    <Warning>
+      The order is critical: `FBSDKApplicationDelegate` **must be checked before** `RCTLinkingManager`. If `RCTLinkingManager` is placed first, it will intercept the Facebook SSO callback URL and treat it as a regular deep link, breaking Facebook Single Sign-On functionality.
+    </Warning>
+
+    ```swift
+    public override func application(
+      _ app: UIApplication,
+      open url: URL,
+      options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+      // IMPORTANT: Facebook SDK must be checked FIRST
+      let handledByFB = ApplicationDelegate.shared.application(
+        app, open: url, options: options)
+      
+      // Then React Native Linking
+      let handledByRN = RCTLinkingManager.application(
+        app, open: url, options: options)
+      
+      // Finally super
+      let handledBySuper = super.application(
+        app, open: url, options: options)
+      
+      return handledByFB || handledByRN || handledBySuper
+    }
+    ```
+  </Tab>
+
+  <Tab title="React Native <= 0.76 (Objective-C)">
+    For Objective-C projects, configure `AppDelegate.m`:
+
+    ### 1. Add Required Imports
+
+    ```objc
+    #import <AuthenticationServices/AuthenticationServices.h>
+    #import <SafariServices/SafariServices.h>
+    #import <FBSDKCoreKit/FBSDKCoreKit-Swift.h>
+    ```
+
+    ### 2. Initialize Facebook SDK
+
+    Add this inside `didFinishLaunchingWithOptions`:
+
+    ```objc
+    [[FBSDKApplicationDelegate sharedInstance] application:application
+                        didFinishLaunchingWithOptions:launchOptions];
+    ```
+
+    ### 3. Add openURL Method for Facebook SSO
+
+    <Warning>
+      This method is **required** for Facebook login to work when the Facebook app is installed on the device. Without this code, login might not work properly.
+    </Warning>
+
+    ```objc
+    - (BOOL)application:(UIApplication *)app
+                openURL:(NSURL *)url
+                options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+    {
+      return [[FBSDKApplicationDelegate sharedInstance]application:app
+                                                          openURL:url
+                                                          options:options];
+    }
+    ```
+
+    ### With Deep Linking (RCTLinkingManager)
+
+    If you're also using `RCTLinkingManager` to handle deep links, you need to handle both results in your `openURL` method:
+
+    <Warning>
+      Always ensure that the `RCTLinkingManager` condition is added as the **last condition** in your deep linking logic. If placed before `FBSDKApplicationDelegate`, it will intercept the Facebook SSO link, treating it as a standard deep link and breaking Facebook Single Sign-On functionality.
+    </Warning>
+
+    ```objc
+    #import <AuthenticationServices/AuthenticationServices.h>
+    #import <SafariServices/SafariServices.h>
+    #import <FBSDKCoreKit/FBSDKCoreKit-Swift.h>
+    #import <React/RCTLinkingManager.h> // <- Add This Import
+
+    - (BOOL)application:(UIApplication *)app
+                openURL:(NSURL *)url
+                options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+    {
+      if ([[FBSDKApplicationDelegate sharedInstance] application:app openURL:url options:options]) {
+        return YES;
+      }
+
+      if ([RCTLinkingManager application:app openURL:url options:options]) {
+        return YES;
+      }
+
+      return NO;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+### Undefined symbols for architecture error
+
+<Warning>
+  If you encounter a build error with "Undefined symbols for architecture x86_64", you need to create a Bridging Header.
+</Warning>
+
+After **facebook-ios-sdk v7** (written with Swift), you need to coordinate Swift language usage with Objective-C:
+
+**Solution 1: Create a Bridging Header (Recommended)**
+
+1. Create a new file named `File.swift` in your main project folder
+2. When Xcode prompts you, click "Yes" to create a Bridging Header
+3. The empty Swift file will automatically configure the Header Search Paths
+
+**Solution 2: Add Podfile Workaround**
+
+Add this to the `post_install` section of your `Podfile`:
+
+```ruby
+# Mixing Swift and Objective-C in a react-native project may be problematic.
+# Workaround: https://github.com/facebookarchive/react-native-fbsdk/issues/755
+installer.aggregate_targets.first.user_project.native_targets.each do |target|
+  target.build_configurations.each do |config|
+    config.build_settings['LIBRARY_SEARCH_PATHS'] = ['$(inherited)', '$(SDKROOT)/usr/lib/swift']
+  end
+end
+```
+
+Then run:
+
+```bash
+pod deintegrate && pod install
+```
+
+### Login doesn't work when Facebook app is installed
+
+Make sure you've implemented the `openURL` method correctly. Without it, the Facebook app cannot redirect back to your app after authentication.
+
+See: [GitHub Issue #59](https://github.com/thebergamo/react-native-fbsdk-next/issues/59#issuecomment-1038149447)
+
+### App ID not found error
+
+If you get an exception about App ID not found, and you're certain it's in your `Info.plist`, add this to `didFinishLaunchingWithOptions` before the `return YES` statement:
+
+```objc
+[[FBSDKApplicationDelegate sharedInstance] application:application
+                      didFinishLaunchingWithOptions:launchOptions];
+```
+
+### Duplicate symbol errors
+
+Make sure that `FBSDKCoreKit.framework`, `FBSDKLoginKit.framework`, and `FBSDKShareKit.framework` are **not** in `Link Binary with Libraries` for your root project when using CocoaPods.
+
+### Xcode version too old
+
+If you get the error `no type or protocol named UIApplicationOpenURLOptionsKey`, upgrade to Xcode 10.0 or later.
+
+## Next Steps
+
+Once iOS setup is complete, you can:
+
+- [Get Started with Facebook Login](/quickstart)
+- [Implement Login](/features/login)
+- [Track App Events](/features/app-events)

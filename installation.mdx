@@ -1,0 +1,388 @@
+---
+title: Installation
+description: Install and configure React Native FBSDK Next in your project
+---
+
+## Prerequisites
+
+Before installing React Native FBSDK Next, ensure you have:
+
+- React Native version 0.63.3 or higher
+- A Facebook App ID (create one at [Facebook Developers](https://developers.facebook.com/apps))
+- Xcode 12.0+ (for iOS development)
+- Android Studio (for Android development)
+
+<Note>
+  This guide assumes you have a React Native project already set up. If not, create one using:
+  ```bash
+  npx react-native init MyApp
+  ```
+</Note>
+
+## Step 1: Install the Package
+
+Choose your preferred package manager:
+
+<CodeGroup>
+
+```bash npm
+npm install --save react-native-fbsdk-next
+```
+
+```bash yarn
+yarn add react-native-fbsdk-next
+```
+
+```bash pnpm
+pnpm add react-native-fbsdk-next
+```
+
+</CodeGroup>
+
+## Step 2: Link Native Dependencies
+
+### React Native 0.60+
+
+The [CLI autolink feature](https://github.com/react-native-community/cli/blob/master/docs/autolinking.md) automatically links the native modules.
+
+#### iOS: Install CocoaPods
+
+For iOS, you need to install the native dependencies using CocoaPods:
+
+```bash
+cd ios && pod install && cd ..
+```
+
+<Note>
+  If you encounter any issues during pod installation, try:
+  ```bash
+  cd ios && pod install --repo-update && cd ..
+  ```
+</Note>
+
+#### Android
+
+No additional steps required. The module will be linked automatically.
+
+### React Native < 0.60
+
+<Warning>
+  For React Native versions below 0.60, please refer to the [original React Native FBSDK documentation](https://github.com/facebook/react-native-fbsdk).
+</Warning>
+
+## Step 3: Configure Android
+
+Follow these steps to configure the Facebook SDK for Android:
+
+### 3.1 Update `android/app/src/main/res/values/strings.xml`
+
+Add your Facebook App ID, Client Token, and App Name:
+
+```xml
+<resources>
+    <string name="app_name">MyApp</string>
+    <string name="facebook_app_id">YOUR_FACEBOOK_APP_ID</string>
+    <string name="facebook_client_token">YOUR_CLIENT_TOKEN</string>
+    <string name="fb_login_protocol_scheme">fbYOUR_FACEBOOK_APP_ID</string>
+</resources>
+```
+
+<Note>
+  Replace `YOUR_FACEBOOK_APP_ID` and `YOUR_CLIENT_TOKEN` with your actual Facebook app credentials from the [Facebook App Dashboard](https://developers.facebook.com/apps).
+</Note>
+
+### 3.2 Update `android/app/src/main/AndroidManifest.xml`
+
+Add the following inside the `<application>` tag:
+
+```xml
+<meta-data 
+    android:name="com.facebook.sdk.ApplicationId" 
+    android:value="@string/facebook_app_id"/>
+<meta-data 
+    android:name="com.facebook.sdk.ClientToken" 
+    android:value="@string/facebook_client_token"/>
+
+<activity 
+    android:name="com.facebook.FacebookActivity"
+    android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
+    android:label="@string/app_name" />
+
+<activity
+    android:name="com.facebook.CustomTabActivity"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="@string/fb_login_protocol_scheme" />
+    </intent-filter>
+</activity>
+```
+
+### 3.3 Configure Key Hash
+
+Generate your development key hash and add it to your Facebook App settings:
+
+```bash
+keytool -exportcert -alias androiddebugkey -keystore ~/.android/debug.keystore | openssl sha1 -binary | openssl base64
+```
+
+<Note>
+  The default password for the debug keystore is `android`.
+</Note>
+
+Add the generated hash to your Facebook App: **Settings > Basic > Key Hashes**
+
+## Step 4: Configure iOS
+
+The configuration differs based on your React Native version.
+
+### React Native >= 0.77 (Swift)
+
+<Steps>
+  <Step title="Add Required Imports">
+    At the top of your `ios/YourApp/AppDelegate.swift` file:
+
+    ```swift
+    import FBSDKCoreKit              // Add this
+    import AppTrackingTransparency   // Add this
+    ```
+  </Step>
+
+  <Step title="Initialize Facebook SDK">
+    Inside the `application(_:didFinishLaunchingWithOptions:)` method:
+
+    ```swift
+    public override func application(
+      _ application: UIApplication,
+      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+      
+      // ... your existing code ...
+      
+      // Initialize Facebook SDK
+      ApplicationDelegate.shared.application(
+        application,
+        didFinishLaunchingWithOptions: launchOptions
+      )
+      
+      // Request App Tracking Transparency authorization (iOS 14+)
+      if #available(iOS 14, *) {
+        ATTrackingManager.requestTrackingAuthorization { _ in
+          AppEvents.shared.activateApp()
+        }
+      } else {
+        AppEvents.shared.activateApp()
+      }
+      
+      return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+    ```
+  </Step>
+
+  <Step title="Add openURL Method">
+    This is **critical** for Facebook SSO to work when the Facebook app is installed:
+
+    ```swift
+    public override func application(
+      _ app: UIApplication,
+      open url: URL,
+      options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+      // Facebook SDK must be checked FIRST
+      let handledByFB = ApplicationDelegate.shared.application(
+        app, open: url, options: options)
+      
+      // Then call super
+      let handledBySuper = super.application(
+        app, open: url, options: options)
+      
+      return handledByFB || handledBySuper
+    }
+    ```
+
+    <Warning>
+      If you're using `RCTLinkingManager` for deep links, Facebook SDK must be checked **before** `RCTLinkingManager` to prevent SSO issues.
+    </Warning>
+  </Step>
+</Steps>
+
+### React Native 0.76 and below (Objective-C)
+
+<Steps>
+  <Step title="Add Required Imports">
+    At the top of your `ios/YourApp/AppDelegate.m` file:
+
+    ```objc
+    #import <AuthenticationServices/AuthenticationServices.h>
+    #import <SafariServices/SafariServices.h>
+    #import <FBSDKCoreKit/FBSDKCoreKit-Swift.h>
+    ```
+  </Step>
+
+  <Step title="Initialize Facebook SDK">
+    Inside the `didFinishLaunchingWithOptions` method:
+
+    ```objc
+    - (BOOL)application:(UIApplication *)application 
+        didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+    {
+      [[FBSDKApplicationDelegate sharedInstance] application:application
+                          didFinishLaunchingWithOptions:launchOptions];
+      
+      // your other code
+      return YES;
+    }
+    ```
+  </Step>
+
+  <Step title="Add openURL Method">
+    ```objc
+    - (BOOL)application:(UIApplication *)app
+                openURL:(NSURL *)url
+                options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+    {
+      return [[FBSDKApplicationDelegate sharedInstance] application:app
+                                                          openURL:url
+                                                          options:options];
+    }
+    ```
+  </Step>
+
+  <Step title="Create Swift Bridging Header">
+    If you encounter `Undefined symbols for architecture` errors, create an empty `File.swift` in your project. Xcode will prompt you to create a Bridging Header - click accept.
+  </Step>
+</Steps>
+
+### Configure Info.plist
+
+Add the following to your `ios/YourApp/Info.plist`:
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>fbYOUR_APP_ID</string>
+    </array>
+  </dict>
+</array>
+<key>FacebookAppID</key>
+<string>YOUR_APP_ID</string>
+<key>FacebookClientToken</key>
+<string>YOUR_CLIENT_TOKEN</string>
+<key>FacebookDisplayName</key>
+<string>YOUR_APP_NAME</string>
+<key>LSApplicationQueriesSchemes</key>
+<array>
+  <string>fbapi</string>
+  <string>fb-messenger-share-api</string>
+</array>
+<key>NSUserTrackingUsageDescription</key>
+<string>This identifier will be used to deliver personalized ads to you.</string>
+```
+
+<Note>
+  Replace `YOUR_APP_ID`, `YOUR_CLIENT_TOKEN`, and `YOUR_APP_NAME` with your actual Facebook app details.
+</Note>
+
+## Expo Configuration
+
+<Note>
+  This package cannot be used in the "Expo Go" app because it requires custom native code.
+</Note>
+
+For Expo projects using the bare workflow or custom dev client:
+
+### Add Config Plugin
+
+In your `app.json` or `app.config.js`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "48127127xxxxxxxx",
+          "clientToken": "c5078631e4065b60d7544a95xxxxxxxx",
+          "displayName": "My App",
+          "scheme": "fb48127127xxxxxxxx",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true,
+          "iosUserTrackingPermission": "This identifier will be used to deliver personalized ads to you."
+        }
+      ]
+    ]
+  }
+}
+```
+
+### Rebuild Native Code
+
+After configuring the plugin, rebuild your app:
+
+```bash
+eas build --profile development --platform ios
+eas build --profile development --platform android
+```
+
+## Verify Installation
+
+Create a simple test file to verify the installation:
+
+```javascript App.js
+import React from 'react';
+import { View } from 'react-native';
+import { LoginButton, Settings } from 'react-native-fbsdk-next';
+
+// Initialize the SDK
+Settings.initializeSDK();
+
+export default function App() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <LoginButton
+        onLoginFinished={(error, result) => {
+          if (error) {
+            console.log('Login error:', error);
+          } else {
+            console.log('Login success:', result);
+          }
+        }}
+        onLogoutFinished={() => console.log('Logged out')}
+      />
+    </View>
+  );
+}
+```
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Build error: 'Undefined symbols for architecture'">
+    **Solution:** Create an empty `File.swift` in your iOS project root. When Xcode prompts you to create a Bridging Header, accept it.
+  </Accordion>
+
+  <Accordion title="Login doesn't work when Facebook app is installed">
+    **Solution:** Make sure you've implemented the `openURL` method correctly in your AppDelegate. Without it, the app cannot handle the callback from Facebook.
+  </Accordion>
+
+  <Accordion title="Android: 'There is an error in logging you into this application'">
+    **Solution:** Verify that your key hash is correctly configured in the Facebook App Dashboard under Settings > Basic > Key Hashes.
+  </Accordion>
+
+  <Accordion title="iOS: 'App ID not found' exception">
+    **Solution:** Ensure you've added the FacebookAppID to your Info.plist and called `[[FBSDKApplicationDelegate sharedInstance] application:application didFinishLaunchingWithOptions:launchOptions];` in AppDelegate.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+  Now that you've installed the SDK, learn how to implement Facebook Login in your app
+</Card>

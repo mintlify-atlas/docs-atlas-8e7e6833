@@ -1,0 +1,431 @@
+---
+title: Game Requests
+description: Send game requests to friends to increase engagement
+---
+
+Game Requests allow players to invite their friends to play a game or re-engage friends who haven't played in a while. This feature is specifically designed for gaming applications.
+
+## Basic Usage
+
+### Sending a Game Request
+
+```js
+import { GameRequestDialog } from 'react-native-fbsdk-next';
+
+const gameRequestContent = {
+  message: "Join me in this awesome game!",
+};
+
+async function sendGameRequest() {
+  try {
+    const canShow = await GameRequestDialog.canShow();
+    
+    if (canShow) {
+      const result = await GameRequestDialog.show(gameRequestContent);
+      
+      if (result.isCancelled) {
+        console.log("Game request cancelled");
+      } else {
+        console.log("Request ID:", result.requestId);
+        console.log("Recipients:", result.to);
+      }
+    }
+  } catch (error) {
+    console.log("Error:", error);
+  }
+}
+```
+
+## Request Types
+
+### Send Request
+
+Send an object to friends (e.g., send a gift):
+
+```js
+const gameRequestContent = {
+  message: "I sent you a gift!",
+  actionType: "send",
+  objectId: "gift_12345",
+  data: "extra_data_here",
+};
+
+GameRequestDialog.show(gameRequestContent);
+```
+
+### Ask For Request
+
+Ask friends for an object (e.g., request lives):
+
+```js
+const gameRequestContent = {
+  message: "Can you send me some extra lives?",
+  actionType: "askfor",
+  objectId: "lives_request",
+  data: "lives_needed:5",
+};
+
+GameRequestDialog.show(gameRequestContent);
+```
+
+### Turn Request
+
+Notify friends it's their turn in a game:
+
+```js
+const gameRequestContent = {
+  message: "It's your turn to play!",
+  actionType: "turn",
+  data: "game_id:abc123,match_id:xyz789",
+};
+
+GameRequestDialog.show(gameRequestContent);
+```
+
+## Targeting Recipients
+
+### Specific Friends
+
+Send requests to specific friends:
+
+```js
+const gameRequestContent = {
+  message: "Let's play together!",
+  recipients: ["friend_user_id_1", "friend_user_id_2"],
+};
+
+GameRequestDialog.show(gameRequestContent);
+```
+
+### Suggested Friends
+
+Suggest specific friends in the dialog:
+
+```js
+const gameRequestContent = {
+  message: "Challenge your friends!",
+  suggestions: ["suggested_user_id_1", "suggested_user_id_2"],
+};
+
+GameRequestDialog.show(gameRequestContent);
+```
+
+<Note>
+You cannot use both `recipients` and `suggestions` in the same request. Use `recipients` to send to specific users, or `suggestions` to pre-populate the friend selector.
+</Note>
+
+## Filtering Recipients
+
+### App Users Only
+
+Show only friends who already use the app:
+
+```js
+const gameRequestContent = {
+  message: "Let's play another round!",
+  filters: "app_users",
+};
+
+GameRequestDialog.show(gameRequestContent);
+```
+
+### Non-App Users
+
+Show only friends who don't use the app (for invitations):
+
+```js
+const gameRequestContent = {
+  message: "Join me in this game!",
+  filters: "app_non_users",
+};
+
+GameRequestDialog.show(gameRequestContent);
+```
+
+<Warning>
+You cannot use `filters` together with `suggestions`. If you need to suggest specific friends, you cannot also apply user filters.
+</Warning>
+
+## Custom Request Data
+
+### Adding Tracking Data
+
+Include custom data for tracking (max 255 characters):
+
+```js
+const gameRequestContent = {
+  message: "Help me beat this level!",
+  data: JSON.stringify({
+    level: 42,
+    campaign: "summer_2024",
+    source: "level_failed_screen",
+  }),
+};
+
+GameRequestDialog.show(gameRequestContent);
+```
+
+### Custom Title
+
+Set a custom title for the request dialog:
+
+```js
+const gameRequestContent = {
+  message: "Let's compete!",
+  title: "Challenge Your Friends",
+};
+
+GameRequestDialog.show(gameRequestContent);
+```
+
+## Complete Examples
+
+<Tabs>
+  <Tab title="Invite Friends">
+    ```jsx
+    import React from 'react';
+    import { View, Button, Alert } from 'react-native';
+    import { GameRequestDialog } from 'react-native-fbsdk-next';
+
+    export default function InviteFriends() {
+      const inviteFriends = async () => {
+        const content = {
+          message: "Join me in this awesome game!",
+          title: "Invite Friends to Play",
+          filters: "app_non_users",
+          data: JSON.stringify({
+            source: "invite_button",
+            campaign: "new_player_invite",
+          }),
+        };
+
+        try {
+          const canShow = await GameRequestDialog.canShow();
+          
+          if (!canShow) {
+            Alert.alert("Error", "Cannot show game request dialog");
+            return;
+          }
+
+          const result = await GameRequestDialog.show(content);
+          
+          if (!result.isCancelled) {
+            Alert.alert(
+              "Success",
+              `Invites sent to ${result.to.length} friend(s)`
+            );
+            console.log("Request ID:", result.requestId);
+          }
+        } catch (error) {
+          Alert.alert("Error", error.message);
+        }
+      };
+
+      return (
+        <View>
+          <Button title="Invite Friends" onPress={inviteFriends} />
+        </View>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Request Lives">
+    ```jsx
+    import React from 'react';
+    import { View, Button, Alert } from 'react-native';
+    import { GameRequestDialog } from 'react-native-fbsdk-next';
+
+    export default function RequestLives() {
+      const requestLives = async () => {
+        const content = {
+          message: "I need more lives to continue playing. Can you help?",
+          title: "Request Extra Lives",
+          actionType: "askfor",
+          objectId: "extra_lives",
+          filters: "app_users",
+          data: JSON.stringify({
+            lives_needed: 5,
+            current_level: 15,
+          }),
+        };
+
+        try {
+          const canShow = await GameRequestDialog.canShow();
+          
+          if (canShow) {
+            const result = await GameRequestDialog.show(content);
+            
+            if (!result.isCancelled) {
+              Alert.alert(
+                "Success",
+                "Lives requested from your friends!"
+              );
+            }
+          }
+        } catch (error) {
+          Alert.alert("Error", error.message);
+        }
+      };
+
+      return (
+        <View>
+          <Button title="Request Lives" onPress={requestLives} />
+        </View>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Challenge Friend">
+    ```jsx
+    import React from 'react';
+    import { View, Button } from 'react-native';
+    import { GameRequestDialog } from 'react-native-fbsdk-next';
+
+    export default function ChallengeScreen({ friendId, score }) {
+      const challengeFriend = async () => {
+        const content = {
+          message: `I scored ${score} points! Can you beat my score?",
+          title: "Challenge Friend",
+          actionType: "send",
+          objectId: "score_challenge",
+          recipients: [friendId],
+          data: JSON.stringify({
+            challenge_type: "high_score",
+            score: score,
+            timestamp: Date.now(),
+          }),
+        };
+
+        try {
+          const canShow = await GameRequestDialog.canShow();
+          
+          if (canShow) {
+            const result = await GameRequestDialog.show(content);
+            
+            if (!result.isCancelled) {
+              console.log("Challenge sent!");
+            }
+          }
+        } catch (error) {
+          console.error("Challenge error:", error);
+        }
+      };
+
+      return (
+        <View>
+          <Button title="Challenge Friend" onPress={challengeFriend} />
+        </View>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Turn-Based Game">
+    ```jsx
+    import React from 'react';
+    import { View, Button } from 'react-native';
+    import { GameRequestDialog } from 'react-native-fbsdk-next';
+
+    export default function TurnBasedGame({ matchId, opponentId }) {
+      const notifyTurn = async () => {
+        const content = {
+          message: "It's your turn to play!",
+          title: "Your Turn",
+          actionType: "turn",
+          recipients: [opponentId],
+          data: JSON.stringify({
+            match_id: matchId,
+            game_state: "waiting_for_move",
+          }),
+        };
+
+        try {
+          const canShow = await GameRequestDialog.canShow();
+          
+          if (canShow) {
+            await GameRequestDialog.show(content);
+          }
+        } catch (error) {
+          console.error("Turn notification error:", error);
+        }
+      };
+
+      return (
+        <View>
+          <Button title="End Turn" onPress={notifyTurn} />
+        </View>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## TypeScript Support
+
+### GameRequestContent Type
+
+```typescript
+type GameRequestContent = {
+  message: string;                    // Required
+  actionType?: 'send' | 'askfor' | 'turn';
+  data?: string;                      // Max 255 characters
+  filters?: 'app_users' | 'app_non_users';
+  objectId?: string;                  // Required for 'send' and 'askfor'
+  recipients?: Array<string>;
+  suggestions?: Array<string>;
+  title?: string;
+};
+
+type GameRequestDialogResult = {
+  isCancelled: boolean;
+  requestId: string;
+  to: Array<string>;
+};
+```
+
+## API Reference
+
+### GameRequestDialog Methods
+
+| Method | Description |
+|--------|-------------|
+| `canShow()` | Check if the dialog can be shown |
+| `show(content)` | Show the game request dialog |
+
+### GameRequestContent Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `message` | string | Yes | Plain-text message for the request |
+| `actionType` | string | No | Type of request: 'send', 'askfor', or 'turn' |
+| `objectId` | string | Conditional | Required for 'send' and 'askfor' action types |
+| `data` | string | No | Custom tracking data (max 255 chars) |
+| `filters` | string | No | Filter friends: 'app_users' or 'app_non_users' |
+| `recipients` | string[] | No | Specific user IDs to send to |
+| `suggestions` | string[] | No | User IDs to suggest in dialog |
+| `title` | string | No | Custom dialog title |
+
+### GameRequestDialogResult Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `isCancelled` | boolean | Whether the request was cancelled |
+| `requestId` | string | ID of the created request |
+| `to` | string[] | Array of recipient user IDs |
+
+## Best Practices
+
+1. **Always check canShow()** before attempting to show the dialog
+2. **Use actionType appropriately** - Choose the right type for your use case
+3. **Include meaningful data** - Track request sources and contexts
+4. **Keep messages clear** - Use concise, action-oriented language
+5. **Don't spam** - Limit how frequently users can send requests
+6. **Target wisely** - Use filters to show relevant friends
+7. **Handle cancellations** - Users may cancel the dialog, handle gracefully
+
+## Limitations
+
+- Cannot use `filters` with `suggestions`
+- Cannot use `recipients` with `suggestions`
+- `data` field is limited to 255 characters
+- `objectId` is required when `actionType` is 'send' or 'askfor'
+- Game requests are designed for gaming apps only

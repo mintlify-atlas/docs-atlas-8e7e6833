@@ -1,0 +1,822 @@
+---
+title: AccessToken
+description: API reference for the AccessToken class
+---
+
+The `AccessToken` class represents an immutable access token for using Facebook services. It provides methods to retrieve, manage, and monitor access tokens.
+
+<Warning>
+Access Tokens are **not available** with [Limited Login](/concepts/limited-login) on iOS. Use [AuthenticationToken](/api/authentication-token) instead.
+</Warning>
+
+## Import
+
+```javascript
+import { AccessToken } from 'react-native-fbsdk-next';
+```
+
+## Static Methods
+
+### getCurrentAccessToken
+
+Retrieves the current access token for the application.
+
+```typescript
+static getCurrentAccessToken(): Promise<AccessToken | null>
+```
+
+#### Returns
+
+`Promise<AccessToken | null>` - Resolves with an `AccessToken` instance if a user is logged in, or `null` if no user is logged in.
+
+#### Example
+
+```javascript
+import { AccessToken } from 'react-native-fbsdk-next';
+
+async function checkLoginStatus() {
+  const token = await AccessToken.getCurrentAccessToken();
+  
+  if (token) {
+    console.log('User is logged in');
+    console.log('Access Token:', token.accessToken);
+    console.log('User ID:', token.userID);
+    console.log('Permissions:', token.permissions);
+  } else {
+    console.log('No user logged in');
+  }
+}
+```
+
+---
+
+### setCurrentAccessToken
+
+Sets the current access token for the application.
+
+```typescript
+static setCurrentAccessToken(accessToken: AccessTokenMap): void
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `accessToken` | `AccessTokenMap` | Object containing access token data |
+
+<Warning>
+This method is for advanced use cases only. Most apps should not need to call this directly.
+</Warning>
+
+#### Example
+
+```javascript
+import { AccessToken } from 'react-native-fbsdk-next';
+
+// Advanced usage - typically not needed
+AccessToken.setCurrentAccessToken({
+  accessToken: 'token_string',
+  applicationID: 'your_app_id',
+  userID: 'user_id',
+  permissions: ['public_profile', 'email'],
+  declinedPermissions: [],
+  expiredPermissions: [],
+  expirationTime: Date.now() + 60 * 60 * 1000, // 1 hour from now
+  lastRefreshTime: Date.now(),
+  dataAccessExpirationTime: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days
+});
+```
+
+---
+
+### refreshCurrentAccessTokenAsync
+
+Refreshes the current access token, extending expiration date if possible.
+
+```typescript
+static refreshCurrentAccessTokenAsync(): Promise<AccessTokenMap>
+```
+
+#### Returns
+
+`Promise<AccessTokenMap>` - Resolves with the refreshed access token data.
+
+#### Example
+
+```javascript
+import { AccessToken } from 'react-native-fbsdk-next';
+
+async function refreshToken() {
+  try {
+    const refreshedToken = await AccessToken.refreshCurrentAccessTokenAsync();
+    console.log('Token refreshed successfully');
+    console.log('New expiration:', new Date(refreshedToken.expirationTime));
+  } catch (error) {
+    console.error('Failed to refresh token:', error);
+  }
+}
+
+// Refresh token if it's about to expire
+async function checkAndRefresh() {
+  const token = await AccessToken.getCurrentAccessToken();
+  
+  if (token) {
+    const hoursUntilExpiry = (token.expirationTime - Date.now()) / (1000 * 60 * 60);
+    
+    if (hoursUntilExpiry < 24) {
+      console.log('Token expiring soon, refreshing...');
+      await AccessToken.refreshCurrentAccessTokenAsync();
+    }
+  }
+}
+```
+
+---
+
+### addListener
+
+Adds a listener that is called when the access token changes.
+
+```typescript
+static addListener(
+  listener: (accessToken: AccessToken | null) => void
+): () => void
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `listener` | `(accessToken: AccessToken \| null) => void` | Callback function invoked when token changes |
+
+#### Returns
+
+`() => void` - A function that removes the listener when called.
+
+#### Example
+
+```javascript
+import { AccessToken } from 'react-native-fbsdk-next';
+import { useEffect } from 'react';
+
+function MyComponent() {
+  useEffect(() => {
+    // Add listener
+    const removeListener = AccessToken.addListener((token) => {
+      if (token) {
+        console.log('Access token updated:', token.accessToken);
+        console.log('User ID:', token.userID);
+      } else {
+        console.log('User logged out');
+      }
+    });
+    
+    // Cleanup: remove listener when component unmounts
+    return () => {
+      removeListener();
+    };
+  }, []);
+  
+  return null;
+}
+```
+
+```javascript
+// Using in a class component
+class MyComponent extends React.Component {
+  componentDidMount() {
+    this.removeTokenListener = AccessToken.addListener(this.handleTokenChange);
+  }
+  
+  componentWillUnmount() {
+    if (this.removeTokenListener) {
+      this.removeTokenListener();
+    }
+  }
+  
+  handleTokenChange = (token) => {
+    if (token) {
+      console.log('Token changed:', token.accessToken);
+    }
+  };
+  
+  render() {
+    return null;
+  }
+}
+```
+
+## Instance Properties
+
+### accessToken
+
+The access token string.
+
+```typescript
+accessToken: string
+```
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+console.log('Token:', token.accessToken);
+
+// Use in API requests
+const response = await fetch(
+  `https://graph.facebook.com/me?access_token=${token.accessToken}`
+);
+```
+
+---
+
+### permissions
+
+Array of permissions that have been granted.
+
+```typescript
+permissions: Array<string>
+```
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+console.log('Granted permissions:', token.permissions);
+
+// Check for specific permission
+if (token.permissions.includes('email')) {
+  console.log('Email permission granted');
+}
+```
+
+---
+
+### declinedPermissions
+
+Array of permissions that have been declined by the user.
+
+```typescript
+declinedPermissions: Array<string>
+```
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+
+if (token.declinedPermissions.includes('user_friends')) {
+  console.log('User declined friends permission');
+  // Maybe show UI explaining why you need it
+}
+```
+
+---
+
+### expiredPermissions
+
+Array of permissions that have expired.
+
+```typescript
+expiredPermissions: Array<string>
+```
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+
+if (token.expiredPermissions.length > 0) {
+  console.log('Expired permissions:', token.expiredPermissions);
+  // Re-request expired permissions
+  await LoginManager.logInWithPermissions(token.expiredPermissions);
+}
+```
+
+---
+
+### applicationID
+
+The Facebook App ID associated with this token.
+
+```typescript
+applicationID: string
+```
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+console.log('App ID:', token.applicationID);
+```
+
+---
+
+### userID
+
+The Facebook User ID associated with this token.
+
+```typescript
+userID: string
+```
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+console.log('User ID:', token.userID);
+
+// Use to fetch user data
+const userData = await fetchUserData(token.userID);
+```
+
+---
+
+### expirationTime
+
+The expiration time of the access token (milliseconds since epoch).
+
+```typescript
+expirationTime: number
+```
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const expiryDate = new Date(token.expirationTime);
+
+console.log('Token expires:', expiryDate.toLocaleString());
+
+// Check if expired
+if (token.expirationTime < Date.now()) {
+  console.log('Token has expired');
+  await AccessToken.refreshCurrentAccessTokenAsync();
+}
+
+// Check time until expiration
+const hoursUntilExpiry = (token.expirationTime - Date.now()) / (1000 * 60 * 60);
+console.log(`Token expires in ${hoursUntilExpiry.toFixed(1)} hours`);
+```
+
+---
+
+### lastRefreshTime
+
+The last time the token was refreshed (milliseconds since epoch).
+
+```typescript
+lastRefreshTime: number
+```
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const lastRefresh = new Date(token.lastRefreshTime);
+
+console.log('Last refreshed:', lastRefresh.toLocaleString());
+```
+
+---
+
+### dataAccessExpirationTime
+
+The data access expiration time (milliseconds since epoch).
+
+```typescript
+dataAccessExpirationTime: number
+```
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const dataExpiry = new Date(token.dataAccessExpirationTime);
+
+console.log('Data access expires:', dataExpiry.toLocaleString());
+
+// Check if data access is expiring soon
+const daysUntilExpiry = (token.dataAccessExpirationTime - Date.now()) / (1000 * 60 * 60 * 24);
+
+if (daysUntilExpiry < 30) {
+  console.log('Data access expiring soon, reauthorizing...');
+  await LoginManager.reauthorizeDataAccess();
+}
+```
+
+---
+
+### accessTokenSource
+
+The source of the access token (Android only).
+
+```typescript
+accessTokenSource?: string
+```
+
+**Platform:** Android only
+
+#### Example
+
+```javascript
+import { Platform } from 'react-native';
+
+const token = await AccessToken.getCurrentAccessToken();
+
+if (Platform.OS === 'android' && token.accessTokenSource) {
+  console.log('Token source:', token.accessTokenSource);
+}
+```
+
+## Instance Methods
+
+### getExpires
+
+Gets the expiration time of the access token.
+
+```typescript
+getExpires(): number
+```
+
+#### Returns
+
+`number` - Expiration time in milliseconds since epoch.
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const expires = token.getExpires();
+console.log('Expires:', new Date(expires));
+```
+
+---
+
+### getPermissions
+
+Gets the list of granted permissions.
+
+```typescript
+getPermissions(): Array<string>
+```
+
+#### Returns
+
+`Array<string>` - Array of granted permission strings.
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const permissions = token.getPermissions();
+console.log('Permissions:', permissions);
+```
+
+---
+
+### getDeclinedPermissions
+
+Gets the list of declined permissions.
+
+```typescript
+getDeclinedPermissions(): Array<string>
+```
+
+#### Returns
+
+`Array<string>` - Array of declined permission strings.
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const declined = token.getDeclinedPermissions();
+
+if (declined.includes('email')) {
+  console.log('User declined email permission');
+}
+```
+
+---
+
+### getExpiredPermissions
+
+Gets the list of expired permissions.
+
+```typescript
+getExpiredPermissions(): Array<string>
+```
+
+#### Returns
+
+`Array<string>` - Array of expired permission strings.
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const expired = token.getExpiredPermissions();
+
+if (expired.length > 0) {
+  console.log('Expired permissions:', expired);
+}
+```
+
+---
+
+### getLastRefresh
+
+Gets the last refresh time of the token.
+
+```typescript
+getLastRefresh(): number
+```
+
+#### Returns
+
+`number` - Last refresh time in milliseconds since epoch.
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const lastRefresh = token.getLastRefresh();
+console.log('Last refreshed:', new Date(lastRefresh));
+```
+
+---
+
+### getDataAccessExpiration
+
+Gets the data access expiration time.
+
+```typescript
+getDataAccessExpiration(): number
+```
+
+#### Returns
+
+`number` - Data access expiration time in milliseconds since epoch.
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const dataExpiry = token.getDataAccessExpiration();
+console.log('Data expires:', new Date(dataExpiry));
+```
+
+---
+
+### getApplicationId
+
+Gets the Facebook App ID.
+
+```typescript
+getApplicationId(): string
+```
+
+#### Returns
+
+`string` - The Facebook App ID.
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const appId = token.getApplicationId();
+console.log('App ID:', appId);
+```
+
+---
+
+### getUserId
+
+Gets the Facebook User ID.
+
+```typescript
+getUserId(): string
+```
+
+#### Returns
+
+`string` - The Facebook User ID.
+
+#### Example
+
+```javascript
+const token = await AccessToken.getCurrentAccessToken();
+const userId = token.getUserId();
+console.log('User ID:', userId);
+```
+
+## Types
+
+### AccessTokenMap
+
+```typescript
+type AccessTokenMap = {
+  accessToken: string;
+  permissions: Array<string>;
+  declinedPermissions: Array<string>;
+  expiredPermissions: Array<string>;
+  applicationID: string;
+  userID: string;
+  expirationTime: number;
+  lastRefreshTime: number;
+  dataAccessExpirationTime: number;
+  accessTokenSource?: string; // Android only
+}
+```
+
+Represents the raw access token data returned from the native SDK.
+
+## Complete Example
+
+```javascript
+import React, { useState, useEffect } from 'react';
+import { View, Text, Button, StyleSheet } from 'react-native';
+import { AccessToken, LoginManager } from 'react-native-fbsdk-next';
+
+function TokenInfo() {
+  const [token, setToken] = useState(null);
+  const [tokenInfo, setTokenInfo] = useState(null);
+  
+  useEffect(() => {
+    // Check initial token
+    checkToken();
+    
+    // Listen for token changes
+    const removeListener = AccessToken.addListener((newToken) => {
+      console.log('Token changed');
+      setToken(newToken);
+      if (newToken) {
+        updateTokenInfo(newToken);
+      } else {
+        setTokenInfo(null);
+      }
+    });
+    
+    // Cleanup
+    return () => {
+      removeListener();
+    };
+  }, []);
+  
+  const checkToken = async () => {
+    const currentToken = await AccessToken.getCurrentAccessToken();
+    setToken(currentToken);
+    if (currentToken) {
+      updateTokenInfo(currentToken);
+    }
+  };
+  
+  const updateTokenInfo = (accessToken) => {
+    const now = Date.now();
+    const expiresIn = accessToken.expirationTime - now;
+    const dataExpiresIn = accessToken.dataAccessExpirationTime - now;
+    
+    setTokenInfo({
+      expiresInHours: (expiresIn / (1000 * 60 * 60)).toFixed(1),
+      dataExpiresInDays: (dataExpiresIn / (1000 * 60 * 60 * 24)).toFixed(0),
+      expiryDate: new Date(accessToken.expirationTime),
+      dataExpiryDate: new Date(accessToken.dataAccessExpirationTime),
+    });
+  };
+  
+  const handleRefresh = async () => {
+    try {
+      await AccessToken.refreshCurrentAccessTokenAsync();
+      await checkToken();
+      alert('Token refreshed successfully');
+    } catch (error) {
+      console.error('Refresh failed:', error);
+      alert('Failed to refresh token');
+    }
+  };
+  
+  const handleReauthorize = async () => {
+    try {
+      const result = await LoginManager.reauthorizeDataAccess();
+      if (!result.isCancelled) {
+        await checkToken();
+        alert('Data access reauthorized');
+      }
+    } catch (error) {
+      console.error('Reauthorization failed:', error);
+    }
+  };
+  
+  if (!token) {
+    return (
+      <View style={styles.container}>
+        <Text>No active session</Text>
+      </View>
+    );
+  }
+  
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Access Token Info</Text>
+      
+      <View style={styles.infoSection}>
+        <Text style={styles.label}>User ID:</Text>
+        <Text style={styles.value}>{token.userID}</Text>
+      </View>
+      
+      <View style={styles.infoSection}>
+        <Text style={styles.label}>App ID:</Text>
+        <Text style={styles.value}>{token.applicationID}</Text>
+      </View>
+      
+      <View style={styles.infoSection}>
+        <Text style={styles.label}>Permissions:</Text>
+        <Text style={styles.value}>{token.permissions.join(', ')}</Text>
+      </View>
+      
+      {token.declinedPermissions.length > 0 && (
+        <View style={styles.infoSection}>
+          <Text style={styles.label}>Declined:</Text>
+          <Text style={styles.value}>
+            {token.declinedPermissions.join(', ')}
+          </Text>
+        </View>
+      )}
+      
+      {tokenInfo && (
+        <>
+          <View style={styles.infoSection}>
+            <Text style={styles.label}>Expires in:</Text>
+            <Text style={styles.value}>{tokenInfo.expiresInHours} hours</Text>
+          </View>
+          
+          <View style={styles.infoSection}>
+            <Text style={styles.label}>Data access expires in:</Text>
+            <Text style={styles.value}>{tokenInfo.dataExpiresInDays} days</Text>
+          </View>
+        </>
+      )}
+      
+      <View style={styles.buttonContainer}>
+        <Button title="Refresh Token" onPress={handleRefresh} />
+        <Button title="Reauthorize Data Access" onPress={handleReauthorize} />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  infoSection: {
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: 'white',
+    borderRadius: 8,
+  },
+  label: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+  },
+  value: {
+    fontSize: 16,
+    color: '#000',
+  },
+  buttonContainer: {
+    marginTop: 20,
+    gap: 10,
+  },
+});
+
+export default TokenInfo;
+```
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="shield-check" href="/concepts/authentication">
+    Learn about Facebook authentication
+  </Card>
+  
+  <Card title="LoginManager" icon="right-to-bracket" href="/api/login-manager">
+    Perform login operations
+  </Card>
+  
+  <Card title="AuthenticationToken" icon="key" href="/api/authentication-token">
+    iOS Limited Login authentication tokens
+  </Card>
+  
+  <Card title="Graph API" icon="chart-network" href="/concepts/graph-api">
+    Make Graph API requests
+  </Card>
+</CardGroup>

@@ -1,0 +1,511 @@
+---
+title: LoginManager
+description: API reference for the LoginManager module
+---
+
+The `LoginManager` class provides methods to perform Facebook Login operations programmatically, giving you full control over the login flow.
+
+## Import
+
+```javascript
+import { LoginManager } from 'react-native-fbsdk-next';
+```
+
+## Methods
+
+### logInWithPermissions
+
+Logs in a user with the requested permissions.
+
+```typescript
+logInWithPermissions(
+  permissions: Array<string>,
+  loginTrackingIOS?: LoginTracking,
+  nonceIOS?: string
+): Promise<LoginResult>
+```
+
+#### Parameters
+
+| Parameter | Type | Platform | Description |
+| --- | --- | --- | --- |
+| `permissions` | `Array<string>` | Both | Array of permission strings to request (e.g., `['public_profile', 'email']`) |
+| `loginTrackingIOS` | `'enabled' \| 'limited'` | iOS only | Login tracking mode. Default: `'enabled'`. Use `'limited'` for Limited Login |
+| `nonceIOS` | `string` | iOS only | Optional nonce for validation. A unique nonce is generated if not provided |
+
+#### Returns
+
+`Promise<LoginResult>` - Resolves with a `LoginResult` object containing:
+
+```typescript
+type LoginResult = {
+  isCancelled: boolean;
+  grantedPermissions?: Array<string>;
+  declinedPermissions?: Array<string>;
+}
+```
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `isCancelled` | `boolean` | `true` if the user cancelled the login, `false` otherwise |
+| `grantedPermissions` | `Array<string>` | Array of permissions the user granted |
+| `declinedPermissions` | `Array<string>` | Array of permissions the user declined |
+
+#### Example
+
+```javascript
+import { LoginManager } from 'react-native-fbsdk-next';
+
+async function login() {
+  try {
+    const result = await LoginManager.logInWithPermissions([
+      'public_profile',
+      'email',
+    ]);
+    
+    if (result.isCancelled) {
+      console.log('Login was cancelled');
+    } else {
+      console.log('Login successful');
+      console.log('Granted:', result.grantedPermissions);
+      console.log('Declined:', result.declinedPermissions);
+    }
+  } catch (error) {
+    console.error('Login failed:', error);
+  }
+}
+```
+
+#### iOS Limited Login Example
+
+```javascript
+import { Platform } from 'react-native';
+import { LoginManager, AuthenticationToken } from 'react-native-fbsdk-next';
+
+async function loginIOS() {
+  try {
+    const result = await LoginManager.logInWithPermissions(
+      ['public_profile', 'email'],
+      'limited', // Limited Login
+      'my_unique_nonce' // Optional nonce
+    );
+    
+    if (!result.isCancelled) {
+      const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+      console.log('Auth Token:', authToken.authenticationToken);
+    }
+  } catch (error) {
+    console.error('Login failed:', error);
+  }
+}
+```
+
+---
+
+### logOut
+
+Logs out the currently logged-in user.
+
+```typescript
+logOut(): void
+```
+
+#### Example
+
+```javascript
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+
+async function logout() {
+  LoginManager.logOut();
+  
+  // Verify logout
+  const token = await AccessToken.getCurrentAccessToken();
+  if (token === null) {
+    console.log('Successfully logged out');
+  }
+}
+```
+
+---
+
+### setLoginBehavior
+
+Sets the login behavior for Android. iOS always uses browser-based login.
+
+```typescript
+setLoginBehavior(loginBehavior: LoginBehaviorAndroid): void
+```
+
+#### Parameters
+
+| Parameter | Type | Platform | Description |
+| --- | --- | --- | --- |
+| `loginBehavior` | `LoginBehaviorAndroid` | Android only | The desired login behavior |
+
+**LoginBehaviorAndroid values:**
+
+- `'native_with_fallback'` (default) - Attempt Facebook app login, fall back to web dialog
+- `'native_only'` - Only use Facebook app for login
+- `'web_only'` - Only use web dialog for login
+
+#### Example
+
+```javascript
+import { LoginManager } from 'react-native-fbsdk-next';
+import { Platform } from 'react-native';
+
+if (Platform.OS === 'android') {
+  // Set before calling logInWithPermissions
+  LoginManager.setLoginBehavior('native_with_fallback');
+}
+
+await LoginManager.logInWithPermissions(['public_profile']);
+```
+
+---
+
+### getLoginBehavior
+
+Gets the current login behavior setting (Android only).
+
+```typescript
+getLoginBehavior(): Promise<LoginBehavior>
+```
+
+#### Returns
+
+`Promise<LoginBehavior>` - Resolves with the current login behavior:
+- On Android: One of `LoginBehaviorAndroid` values
+- On iOS: Always returns `'browser'`
+
+#### Example
+
+```javascript
+import { LoginManager } from 'react-native-fbsdk-next';
+import { Platform } from 'react-native';
+
+if (Platform.OS === 'android') {
+  const behavior = await LoginManager.getLoginBehavior();
+  console.log('Current login behavior:', behavior);
+} else {
+  console.log('iOS always uses browser login');
+}
+```
+
+---
+
+### setDefaultAudience
+
+Sets the default audience for posts made by the application.
+
+```typescript
+setDefaultAudience(defaultAudience: DefaultAudience): void
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `defaultAudience` | `DefaultAudience` | The default audience for posts |
+
+**DefaultAudience values:**
+
+- `'friends'` - Only friends can see posts
+- `'everyone'` - All Facebook users can see posts
+- `'only_me'` - Only the user can see posts
+
+#### Example
+
+```javascript
+import { LoginManager } from 'react-native-fbsdk-next';
+
+// Set default audience to friends only
+LoginManager.setDefaultAudience('friends');
+
+await LoginManager.logInWithPermissions(['public_profile', 'email']);
+```
+
+---
+
+### getDefaultAudience
+
+Gets the current default audience setting.
+
+```typescript
+getDefaultAudience(): Promise<DefaultAudience>
+```
+
+#### Returns
+
+`Promise<DefaultAudience>` - Resolves with the current default audience setting.
+
+#### Example
+
+```javascript
+import { LoginManager } from 'react-native-fbsdk-next';
+
+const audience = await LoginManager.getDefaultAudience();
+console.log('Current default audience:', audience);
+// Output: 'friends', 'everyone', or 'only_me'
+```
+
+---
+
+### reauthorizeDataAccess
+
+Re-authorizes the user's data access. Use this when data access permissions have expired.
+
+```typescript
+reauthorizeDataAccess(): Promise<LoginResult>
+```
+
+#### Returns
+
+`Promise<LoginResult>` - Same as `logInWithPermissions`.
+
+#### Example
+
+```javascript
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+
+async function checkAndReauthorize() {
+  const token = await AccessToken.getCurrentAccessToken();
+  
+  // Check if data access is expiring soon
+  const now = Date.now();
+  const expiresIn = token.dataAccessExpirationTime - now;
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+  
+  if (expiresIn < thirtyDays) {
+    console.log('Data access expiring soon, reauthorizing...');
+    
+    const result = await LoginManager.reauthorizeDataAccess();
+    
+    if (!result.isCancelled) {
+      console.log('Reauthorization successful');
+    }
+  }
+}
+```
+
+## Types
+
+### DefaultAudience
+
+```typescript
+type DefaultAudience = 'friends' | 'everyone' | 'only_me';
+```
+
+Indicates which default audience to use for sessions that post data to Facebook.
+
+---
+
+### LoginBehavior
+
+```typescript
+type LoginBehavior = LoginBehaviorIOS | LoginBehaviorAndroid;
+```
+
+Union type for all login behaviors across platforms.
+
+---
+
+### LoginBehaviorAndroid
+
+```typescript
+type LoginBehaviorAndroid = 
+  | 'native_with_fallback'
+  | 'native_only'
+  | 'web_only';
+```
+
+Indicates how Facebook Login should be attempted on Android.
+
+- `native_with_fallback` - Try Facebook app, fall back to web dialog
+- `native_only` - Only use Facebook app
+- `web_only` - Only use web dialog
+
+---
+
+### LoginBehaviorIOS
+
+```typescript
+type LoginBehaviorIOS = 'browser';
+```
+
+iOS only supports browser-based login through Safari or in-app browser.
+
+---
+
+### LoginResult
+
+```typescript
+type LoginResult = {
+  isCancelled: boolean;
+  grantedPermissions?: Array<string>;
+  declinedPermissions?: Array<string>;
+};
+```
+
+Represents the result of a login operation.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `isCancelled` | `boolean` | Whether the login was cancelled by the user |
+| `grantedPermissions` | `Array<string>` | Permissions that were granted |
+| `declinedPermissions` | `Array<string>` | Permissions that were declined |
+
+---
+
+### LoginTracking
+
+```typescript
+type LoginTracking = 'enabled' | 'limited';
+```
+
+iOS only. Determines the login tracking mode:
+
+- `'enabled'` - Traditional login with full tracking (default)
+- `'limited'` - Limited Login for privacy-focused authentication
+
+## Complete Usage Example
+
+```javascript
+import React, { useState } from 'react';
+import { View, Button, Text, Platform, Alert } from 'react-native';
+import {
+  LoginManager,
+  AccessToken,
+  AuthenticationToken,
+  Profile,
+} from 'react-native-fbsdk-next';
+
+function LoginExample() {
+  const [user, setUser] = useState(null);
+  const [loginType, setLoginType] = useState(null);
+  
+  const handleLogin = async () => {
+    try {
+      // Configure login behavior (Android)
+      if (Platform.OS === 'android') {
+        LoginManager.setLoginBehavior('native_with_fallback');
+        LoginManager.setDefaultAudience('friends');
+      }
+      
+      // Perform login
+      const result = await LoginManager.logInWithPermissions(
+        ['public_profile', 'email', 'user_friends'],
+        Platform.OS === 'ios' ? 'limited' : undefined
+      );
+      
+      if (result.isCancelled) {
+        Alert.alert('Login Cancelled', 'You cancelled the login');
+        return;
+      }
+      
+      console.log('Granted permissions:', result.grantedPermissions);
+      console.log('Declined permissions:', result.declinedPermissions);
+      
+      // Get user profile
+      const profile = await Profile.getCurrentProfile();
+      setUser(profile);
+      
+      // Check which type of login
+      if (Platform.OS === 'ios') {
+        const authToken = await AuthenticationToken.getAuthenticationTokenIOS();
+        if (authToken) {
+          setLoginType('limited');
+          console.log('Limited Login - Auth Token:', authToken.authenticationToken);
+        } else {
+          setLoginType('traditional');
+          const accessToken = await AccessToken.getCurrentAccessToken();
+          console.log('Traditional Login - Access Token:', accessToken.accessToken);
+        }
+      } else {
+        setLoginType('traditional');
+        const accessToken = await AccessToken.getCurrentAccessToken();
+        console.log('Access Token:', accessToken.accessToken);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      Alert.alert('Login Error', error.message);
+    }
+  };
+  
+  const handleLogout = () => {
+    LoginManager.logOut();
+    setUser(null);
+    setLoginType(null);
+  };
+  
+  const requestMorePermissions = async () => {
+    try {
+      const result = await LoginManager.logInWithPermissions([
+        'user_birthday',
+        'user_hometown',
+      ]);
+      
+      if (!result.isCancelled) {
+        console.log('New permissions granted:', result.grantedPermissions);
+        Alert.alert('Success', 'Additional permissions granted');
+      }
+    } catch (error) {
+      console.error('Permission request failed:', error);
+    }
+  };
+  
+  const handleReauthorize = async () => {
+    try {
+      const result = await LoginManager.reauthorizeDataAccess();
+      
+      if (!result.isCancelled) {
+        Alert.alert('Success', 'Data access reauthorized');
+      }
+    } catch (error) {
+      console.error('Reauthorization failed:', error);
+    }
+  };
+  
+  return (
+    <View style={{ padding: 20 }}>
+      {user ? (
+        <>
+          <Text style={{ fontSize: 18, marginBottom: 10 }}>
+            Welcome, {user.name}!
+          </Text>
+          <Text style={{ marginBottom: 20 }}>
+            Login Type: {loginType}
+          </Text>
+          <Button title="Request More Permissions" onPress={requestMorePermissions} />
+          <Button title="Reauthorize Data Access" onPress={handleReauthorize} />
+          <Button title="Logout" onPress={handleLogout} />
+        </>
+      ) : (
+        <Button title="Login with Facebook" onPress={handleLogin} />
+      )}
+    </View>
+  );
+}
+
+export default LoginExample;
+```
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Login Methods" icon="right-to-bracket" href="/concepts/login-methods">
+    Learn about different login methods
+  </Card>
+  
+  <Card title="Authentication" icon="shield-check" href="/concepts/authentication">
+    Understand access tokens and authentication
+  </Card>
+  
+  <Card title="AccessToken" icon="key" href="/api/access-token">
+    API reference for AccessToken
+  </Card>
+  
+  <Card title="LoginButton" icon="square" href="/api/login-button">
+    API reference for LoginButton component
+  </Card>
+</CardGroup>

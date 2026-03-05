@@ -1,0 +1,447 @@
+---
+title: Settings
+description: Configure Facebook SDK settings and behavior
+---
+
+The `Settings` module provides methods to configure the Facebook SDK, including app credentials, API versions, data collection, and privacy settings.
+
+## Import
+
+```typescript
+import { Settings } from 'react-native-fbsdk-next';
+```
+
+## Methods
+
+### initializeSDK
+
+Initializes the Facebook SDK. This should be called early in your app lifecycle.
+
+```typescript
+Settings.initializeSDK(): void
+```
+
+**Example:**
+
+```typescript
+import { Settings } from 'react-native-fbsdk-next';
+import { useEffect } from 'react';
+
+function App() {
+  useEffect(() => {
+    Settings.initializeSDK();
+  }, []);
+
+  return (
+    // Your app content
+  );
+}
+```
+
+### setAppID
+
+Sets your Facebook application ID.
+
+```typescript
+Settings.setAppID(appID: string): void
+```
+
+<ParamField path="appID" type="string" required>
+  Your Facebook App ID. Must be a non-empty string.
+</ParamField>
+
+**Example:**
+
+```typescript
+Settings.setAppID('1234567890123456');
+```
+
+### setClientToken
+
+Sets your Facebook client token for client-side API calls.
+
+```typescript
+Settings.setClientToken(clientToken: string): void
+```
+
+<ParamField path="clientToken" type="string" required>
+  Your Facebook client token. Must be a non-empty string.
+</ParamField>
+
+**Example:**
+
+```typescript
+Settings.setClientToken('a1b2c3d4e5f6g7h8i9j0');
+```
+
+### setAppName
+
+Sets the Facebook application name.
+
+```typescript
+Settings.setAppName(appName: string): void
+```
+
+<ParamField path="appName" type="string" required>
+  Your app's name as registered on Facebook. Must be a non-empty string.
+</ParamField>
+
+**Example:**
+
+```typescript
+Settings.setAppName('My Awesome App');
+```
+
+### setGraphAPIVersion
+
+Sets the Graph API version to use for all requests.
+
+```typescript
+Settings.setGraphAPIVersion(version: string): void
+```
+
+<ParamField path="version" type="string" required>
+  The Graph API version (e.g., "v18.0", "v19.0"). Must be a valid version string.
+</ParamField>
+
+**Example:**
+
+```typescript
+Settings.setGraphAPIVersion('v18.0');
+```
+
+### setAutoLogAppEventsEnabled
+
+Enables or disables automatic app event logging.
+
+```typescript
+Settings.setAutoLogAppEventsEnabled(enabled: boolean): void
+```
+
+<ParamField path="enabled" type="boolean" required>
+  `true` to enable automatic logging of app events (installs, launches, etc.), `false` to disable.
+</ParamField>
+
+**Example:**
+
+```typescript
+// Enable automatic event logging
+Settings.setAutoLogAppEventsEnabled(true);
+
+// Disable automatic event logging
+Settings.setAutoLogAppEventsEnabled(false);
+```
+
+### setAdvertiserIDCollectionEnabled
+
+Enables or disables automatic collection of advertiser IDs.
+
+```typescript
+Settings.setAdvertiserIDCollectionEnabled(enabled: boolean): void
+```
+
+<ParamField path="enabled" type="boolean" required>
+  `true` to collect advertiser IDs (IDFA on iOS, Advertising ID on Android), `false` to disable.
+</ParamField>
+
+**Example:**
+
+```typescript
+// Enable advertiser ID collection
+Settings.setAdvertiserIDCollectionEnabled(true);
+
+// Disable advertiser ID collection
+Settings.setAdvertiserIDCollectionEnabled(false);
+```
+
+### setDataProcessingOptions
+
+Configures data processing options for privacy compliance (e.g., CCPA).
+
+```typescript
+Settings.setDataProcessingOptions(
+  options: Array<string>,
+  country?: number,
+  state?: number
+): void
+```
+
+<ParamField path="options" type="Array<string>" required>
+  Array of data processing options. Use `['LDU']` for Limited Data Use mode, or `[]` for normal processing.
+</ParamField>
+
+<ParamField path="country" type="number">
+  Country code (0 for user's current country). Defaults to 0.
+</ParamField>
+
+<ParamField path="state" type="number">
+  State code (0 for user's current state). Defaults to 0.
+</ParamField>
+
+**Example:**
+
+```typescript
+// Enable Limited Data Use mode
+Settings.setDataProcessingOptions(['LDU'], 0, 0);
+
+// Disable Limited Data Use mode
+Settings.setDataProcessingOptions([], 0, 0);
+
+// Specify California (country 1, state 1000)
+Settings.setDataProcessingOptions(['LDU'], 1, 1000);
+```
+
+### getAdvertiserTrackingEnabled
+
+Gets the current Advertiser Tracking Enabled status. **iOS only.**
+
+```typescript
+Settings.getAdvertiserTrackingEnabled(): Promise<boolean>
+```
+
+Returns a Promise that resolves to:
+- `true` if tracking is enabled (iOS)
+- `true` on Android (always enabled)
+
+**Example:**
+
+```typescript
+const trackingEnabled = await Settings.getAdvertiserTrackingEnabled();
+console.log('Tracking enabled:', trackingEnabled);
+```
+
+### setAdvertiserTrackingEnabled
+
+Sets the Advertiser Tracking Enabled status. **iOS 14+ only.**
+
+```typescript
+Settings.setAdvertiserTrackingEnabled(ATE: boolean): Promise<boolean>
+```
+
+<ParamField path="ATE" type="boolean" required>
+  `true` to enable tracking, `false` to disable.
+</ParamField>
+
+Returns a Promise that resolves to:
+- `true` if the setting was applied successfully (iOS 14+)
+- `false` on Android or iOS < 14
+
+**Example:**
+
+```typescript
+if (Platform.OS === 'ios') {
+  const success = await Settings.setAdvertiserTrackingEnabled(true);
+  console.log('Set tracking status:', success);
+}
+```
+
+## Complete Setup Example
+
+```typescript
+import { useEffect } from 'react';
+import { Platform } from 'react-native';
+import { Settings } from 'react-native-fbsdk-next';
+
+function App() {
+  useEffect(() => {
+    // Configure SDK settings
+    Settings.setAppID('1234567890123456');
+    Settings.setClientToken('a1b2c3d4e5f6g7h8i9j0');
+    Settings.setAppName('My Awesome App');
+    Settings.setGraphAPIVersion('v18.0');
+
+    // Configure privacy settings
+    Settings.setAutoLogAppEventsEnabled(true);
+    Settings.setAdvertiserIDCollectionEnabled(true);
+
+    // Initialize SDK
+    Settings.initializeSDK();
+
+    // iOS-specific tracking setup
+    if (Platform.OS === 'ios') {
+      checkTrackingPermission();
+    }
+  }, []);
+
+  const checkTrackingPermission = async () => {
+    const isEnabled = await Settings.getAdvertiserTrackingEnabled();
+    console.log('Tracking enabled:', isEnabled);
+  };
+
+  return (
+    // Your app content
+  );
+}
+```
+
+## Privacy-Compliant Setup
+
+```typescript
+import { useEffect, useState } from 'react';
+import { Settings } from 'react-native-fbsdk-next';
+
+function App() {
+  const [userConsent, setUserConsent] = useState(false);
+
+  useEffect(() => {
+    // Basic setup (always required)
+    Settings.setAppID('1234567890123456');
+    Settings.setClientToken('a1b2c3d4e5f6g7h8i9j0');
+    Settings.setAppName('My Awesome App');
+    Settings.setGraphAPIVersion('v18.0');
+
+    // Disable data collection by default
+    Settings.setAutoLogAppEventsEnabled(false);
+    Settings.setAdvertiserIDCollectionEnabled(false);
+
+    // Enable Limited Data Use for CCPA compliance
+    Settings.setDataProcessingOptions(['LDU'], 0, 0);
+
+    Settings.initializeSDK();
+  }, []);
+
+  const handleUserConsent = async (consent: boolean) => {
+    setUserConsent(consent);
+
+    if (consent) {
+      // User granted consent - enable tracking
+      Settings.setAutoLogAppEventsEnabled(true);
+      Settings.setAdvertiserIDCollectionEnabled(true);
+      Settings.setDataProcessingOptions([], 0, 0);
+      
+      if (Platform.OS === 'ios') {
+        await Settings.setAdvertiserTrackingEnabled(true);
+      }
+    } else {
+      // User denied consent - keep limited data mode
+      Settings.setAutoLogAppEventsEnabled(false);
+      Settings.setAdvertiserIDCollectionEnabled(false);
+      Settings.setDataProcessingOptions(['LDU'], 0, 0);
+    }
+  };
+
+  return (
+    // Your app with consent dialog
+  );
+}
+```
+
+## Configuration by Environment
+
+```typescript
+import { Settings } from 'react-native-fbsdk-next';
+
+const CONFIG = {
+  development: {
+    appID: '1234567890123456',
+    clientToken: 'dev_token',
+    appName: 'My App (Dev)',
+  },
+  production: {
+    appID: '9876543210987654',
+    clientToken: 'prod_token',
+    appName: 'My App',
+  },
+};
+
+const environment = __DEV__ ? 'development' : 'production';
+const config = CONFIG[environment];
+
+Settings.setAppID(config.appID);
+Settings.setClientToken(config.clientToken);
+Settings.setAppName(config.appName);
+Settings.setGraphAPIVersion('v18.0');
+Settings.initializeSDK();
+```
+
+## iOS 14+ ATT Integration
+
+```typescript
+import { useEffect } from 'react';
+import { Platform, Alert } from 'react-native';
+import { Settings } from 'react-native-fbsdk-next';
+import { requestTrackingPermission } from 'react-native-tracking-transparency';
+
+function App() {
+  useEffect(() => {
+    setupFacebookSDK();
+  }, []);
+
+  const setupFacebookSDK = async () => {
+    // Configure SDK
+    Settings.setAppID('1234567890123456');
+    Settings.setClientToken('a1b2c3d4e5f6g7h8i9j0');
+    Settings.setGraphAPIVersion('v18.0');
+
+    if (Platform.OS === 'ios') {
+      // Request ATT permission first
+      const trackingStatus = await requestTrackingPermission();
+      
+      if (trackingStatus === 'authorized') {
+        Settings.setAdvertiserIDCollectionEnabled(true);
+        await Settings.setAdvertiserTrackingEnabled(true);
+      } else {
+        Settings.setAdvertiserIDCollectionEnabled(false);
+        await Settings.setAdvertiserTrackingEnabled(false);
+      }
+    }
+
+    Settings.initializeSDK();
+  };
+
+  return (
+    // Your app content
+  );
+}
+```
+
+## CCPA Compliance
+
+```typescript
+import { Settings } from 'react-native-fbsdk-next';
+
+// User is in California and opts out
+const handleCCPAOptOut = () => {
+  Settings.setDataProcessingOptions(['LDU'], 1, 1000); // Country 1 = USA, State 1000 = California
+};
+
+// User is in California and opts in
+const handleCCPAOptIn = () => {
+  Settings.setDataProcessingOptions([], 1, 1000);
+};
+
+// Let Facebook detect user's location
+const handleAutomaticDetection = () => {
+  Settings.setDataProcessingOptions(['LDU'], 0, 0);
+};
+```
+
+## Best Practices
+
+1. **Call `initializeSDK()` early** in your app lifecycle
+2. **Set app credentials** before initializing
+3. **Specify Graph API version** explicitly for consistency
+4. **Respect user privacy choices** for data collection
+5. **Handle platform differences** (iOS vs Android)
+6. **Test privacy settings** in both enabled and disabled states
+7. **Keep SDK updated** to the latest version
+8. **Use environment-specific configs** for dev/prod
+
+## Platform Differences
+
+### iOS
+- Full ATT framework support
+- `getAdvertiserTrackingEnabled()` returns actual status
+- `setAdvertiserTrackingEnabled()` works on iOS 14+
+
+### Android
+- `getAdvertiserTrackingEnabled()` always returns `true`
+- `setAdvertiserTrackingEnabled()` returns `false` (no-op)
+- Advertiser ID controlled by user's system settings
+
+## Related
+
+- [AppEventsLogger](/api/app-events-logger) - Log app events and user actions
+- [AEMReporter](/api/aem-reporter) - iOS privacy-safe event measurement
+- [Facebook App Dashboard](https://developers.facebook.com/apps) - Get your App ID and Client Token
+- [Graph API Versions](https://developers.facebook.com/docs/graph-api/changelog) - API version changelog

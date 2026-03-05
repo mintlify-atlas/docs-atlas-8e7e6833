@@ -1,0 +1,481 @@
+---
+title: User Profiles
+description: Access Facebook user profile information after login
+---
+
+The Profile API allows you to retrieve information about the currently logged-in Facebook user. The available data depends on the permissions granted during login and the login method used (standard or limited).
+
+## Getting the Current Profile
+
+### Basic Usage
+
+```js
+import { Profile } from "react-native-fbsdk-next";
+
+const currentProfile = await Profile.getCurrentProfile();
+
+if (currentProfile) {
+  console.log(
+    "The current logged user is: " +
+    currentProfile.name +
+    ". Their profile id is: " +
+    currentProfile.userID
+  );
+}
+```
+
+### After Login
+
+```js
+import { LoginManager, Profile } from "react-native-fbsdk-next";
+
+async function loginAndGetProfile() {
+  try {
+    const result = await LoginManager.logInWithPermissions(
+      ["public_profile", "email"]
+    );
+    
+    if (!result.isCancelled) {
+      const profile = await Profile.getCurrentProfile();
+      
+      if (profile) {
+        console.log("Name:", profile.name);
+        console.log("User ID:", profile.userID);
+        console.log("Email:", profile.email);
+        console.log("First Name:", profile.firstName);
+        console.log("Last Name:", profile.lastName);
+        console.log("Profile Image:", profile.imageURL);
+      }
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+  }
+}
+```
+
+## Available Profile Fields
+
+### Basic Fields
+
+Always available with `public_profile` permission:
+
+```js
+const profile = await Profile.getCurrentProfile();
+
+if (profile) {
+  // User ID (always available)
+  console.log("User ID:", profile.userID);
+  
+  // Full name
+  console.log("Name:", profile.name);
+  
+  // First name
+  console.log("First Name:", profile.firstName);
+  
+  // Last name
+  console.log("Last Name:", profile.lastName);
+  
+  // Middle name
+  console.log("Middle Name:", profile.middleName);
+  
+  // Profile picture URL
+  console.log("Profile Image:", profile.imageURL);
+  
+  // Last refresh date
+  console.log("Refreshed:", profile.refreshDate);
+}
+```
+
+### Email Field
+
+Requires the `email` permission:
+
+```js
+import { LoginManager, Profile } from "react-native-fbsdk-next";
+
+// Request email permission
+await LoginManager.logInWithPermissions(["public_profile", "email"]);
+
+const profile = await Profile.getCurrentProfile();
+
+if (profile) {
+  console.log("Email:", profile.email);
+}
+```
+
+<Note>
+On **Android**, the `email` field is **not** available in the Profile object even when the `email` permission is granted. This is a limitation of the Android Facebook SDK. To get the email on Android, use the Graph API instead.
+</Note>
+
+### Profile Link
+
+Requires the `user_link` permission:
+
+```js
+import { LoginManager, Profile } from "react-native-fbsdk-next";
+
+await LoginManager.logInWithPermissions(["public_profile", "user_link"]);
+
+const profile = await Profile.getCurrentProfile();
+
+if (profile) {
+  console.log("Profile URL:", profile.linkURL);
+}
+```
+
+## Limited Login Fields (iOS)
+
+When using Limited Login on iOS, additional fields become available with specific permissions:
+
+### Friends List
+
+Requires `user_friends` permission:
+
+```js
+import { LoginManager, Profile } from "react-native-fbsdk-next";
+
+await LoginManager.logInWithPermissions(
+  ["public_profile", "user_friends"],
+  "limited"  // iOS Limited Login
+);
+
+const profile = await Profile.getCurrentProfile();
+
+if (profile && profile.friendIDs) {
+  console.log("Friend IDs:", profile.friendIDs);
+  console.log("Number of friends:", profile.friendIDs.length);
+}
+```
+
+### Birthday
+
+Requires `user_birthday` permission:
+
+```js
+await LoginManager.logInWithPermissions(
+  ["public_profile", "user_birthday"],
+  "limited"
+);
+
+const profile = await Profile.getCurrentProfile();
+
+if (profile && profile.birthday) {
+  console.log("Birthday:", profile.birthday);
+}
+```
+
+### Age Range
+
+Requires `user_age_range` permission:
+
+```js
+await LoginManager.logInWithPermissions(
+  ["public_profile", "user_age_range"],
+  "limited"
+);
+
+const profile = await Profile.getCurrentProfile();
+
+if (profile && profile.ageRange) {
+  console.log("Age Range:", profile.ageRange.min, "-", profile.ageRange.max);
+}
+```
+
+### Hometown
+
+Requires `user_hometown` permission:
+
+```js
+await LoginManager.logInWithPermissions(
+  ["public_profile", "user_hometown"],
+  "limited"
+);
+
+const profile = await Profile.getCurrentProfile();
+
+if (profile && profile.hometown) {
+  console.log("Hometown:", profile.hometown.name);
+  console.log("Hometown ID:", profile.hometown.id);
+}
+```
+
+### Location
+
+Requires `user_location` permission:
+
+```js
+await LoginManager.logInWithPermissions(
+  ["public_profile", "user_location"],
+  "limited"
+);
+
+const profile = await Profile.getCurrentProfile();
+
+if (profile && profile.location) {
+  console.log("Location:", profile.location.name);
+  console.log("Location ID:", profile.location.id);
+}
+```
+
+### Gender
+
+Requires `user_gender` permission:
+
+```js
+await LoginManager.logInWithPermissions(
+  ["public_profile", "user_gender"],
+  "limited"
+);
+
+const profile = await Profile.getCurrentProfile();
+
+if (profile && profile.gender) {
+  console.log("Gender:", profile.gender);
+}
+```
+
+## Profile Image Handling
+
+### Displaying Profile Picture
+
+```jsx
+import React, { useEffect, useState } from 'react';
+import { View, Image } from 'react-native';
+import { Profile } from 'react-native-fbsdk-next';
+
+export default function ProfilePicture() {
+  const [imageUrl, setImageUrl] = useState(null);
+
+  useEffect(() => {
+    Profile.getCurrentProfile().then((profile) => {
+      if (profile && profile.imageURL) {
+        setImageUrl(profile.imageURL);
+      }
+    });
+  }, []);
+
+  return (
+    <View>
+      {imageUrl && (
+        <Image
+          source={{ uri: imageUrl }}
+          style={{ width: 100, height: 100, borderRadius: 50 }}
+        />
+      )}
+    </View>
+  );
+}
+```
+
+<Note>
+The profile picture URL uses default dimensions (100x100 on iOS). For custom sizes, use the Graph API.
+</Note>
+
+## Platform Differences
+
+### Android Limitations
+
+```js
+import { Platform } from 'react-native';
+import { Profile } from 'react-native-fbsdk-next';
+
+const profile = await Profile.getCurrentProfile();
+
+if (profile) {
+  if (Platform.OS === 'ios') {
+    // Email is available on iOS
+    console.log("Email:", profile.email);
+  } else {
+    // Email field doesn't exist on Android
+    // Use Graph API to fetch email instead
+    console.log("Email not available in Profile on Android");
+  }
+}
+```
+
+## Complete Examples
+
+<Tabs>
+  <Tab title="Profile Display Component">
+    ```jsx
+    import React, { useEffect, useState } from 'react';
+    import { View, Text, Image, StyleSheet } from 'react-native';
+    import { Profile } from 'react-native-fbsdk-next';
+
+    export default function UserProfile() {
+      const [profile, setProfile] = useState(null);
+
+      useEffect(() => {
+        loadProfile();
+      }, []);
+
+      const loadProfile = async () => {
+        const currentProfile = await Profile.getCurrentProfile();
+        setProfile(currentProfile);
+      };
+
+      if (!profile) {
+        return <Text>No profile data</Text>;
+      }
+
+      return (
+        <View style={styles.container}>
+          {profile.imageURL && (
+            <Image
+              source={{ uri: profile.imageURL }}
+              style={styles.profileImage}
+            />
+          )}
+          <Text style={styles.name}>{profile.name}</Text>
+          <Text style={styles.userId}>ID: {profile.userID}</Text>
+          {profile.email && (
+            <Text style={styles.email}>{profile.email}</Text>
+          )}
+        </View>
+      );
+    }
+
+    const styles = StyleSheet.create({
+      container: {
+        padding: 20,
+        alignItems: 'center',
+      },
+      profileImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        marginBottom: 10,
+      },
+      name: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 5,
+      },
+      userId: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 5,
+      },
+      email: {
+        fontSize: 14,
+        color: '#333',
+      },
+    });
+    ```
+  </Tab>
+  <Tab title="Login and Profile Hook">
+    ```jsx
+    import { useEffect, useState } from 'react';
+    import { LoginManager, Profile } from 'react-native-fbsdk-next';
+
+    export function useFacebookProfile() {
+      const [profile, setProfile] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        loadProfile();
+      }, []);
+
+      const loadProfile = async () => {
+        try {
+          const currentProfile = await Profile.getCurrentProfile();
+          setProfile(currentProfile);
+        } catch (error) {
+          console.error('Error loading profile:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const login = async (permissions = ['public_profile', 'email']) => {
+        try {
+          setLoading(true);
+          const result = await LoginManager.logInWithPermissions(permissions);
+          
+          if (!result.isCancelled) {
+            await loadProfile();
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.error('Login error:', error);
+          return false;
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const logout = () => {
+        LoginManager.logOut();
+        setProfile(null);
+      };
+
+      return { profile, loading, login, logout, refresh: loadProfile };
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## TypeScript Support
+
+### Profile Type
+
+```typescript
+import { Profile } from 'react-native-fbsdk-next';
+
+type FBProfile = {
+  userID?: string | null;
+  email?: string | null;              // iOS only
+  name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  middleName?: string | null;
+  linkURL?: string | null;
+  imageURL?: string | null;
+  refreshDate?: Date | null;
+  friendIDs?: Array<string> | null;   // Limited Login iOS only
+  birthday?: Date | null;             // Limited Login iOS only
+  ageRange?: { min: number; max: number } | null;  // Limited Login iOS only
+  hometown?: { id: string; name: string } | null;  // Limited Login iOS only
+  location?: { id: string; name: string } | null;  // Limited Login iOS only
+  gender?: string | null;             // Limited Login iOS only
+  permissions?: Array<string> | null;
+};
+```
+
+## API Reference
+
+### Profile Methods
+
+| Method | Description |
+|--------|-------------|
+| `getCurrentProfile()` | Get the currently logged-in user's profile |
+
+### Profile Fields
+
+| Field | Type | Availability |
+|-------|------|-------------|
+| `userID` | string | Always |
+| `name` | string | public_profile |
+| `firstName` | string | public_profile |
+| `lastName` | string | public_profile |
+| `middleName` | string | public_profile |
+| `imageURL` | string | public_profile |
+| `email` | string | email permission (iOS only) |
+| `linkURL` | string | user_link permission |
+| `refreshDate` | Date | Always |
+| `friendIDs` | string[] | user_friends + Limited Login (iOS) |
+| `birthday` | Date | user_birthday + Limited Login (iOS) |
+| `ageRange` | object | user_age_range + Limited Login (iOS) |
+| `hometown` | object | user_hometown + Limited Login (iOS) |
+| `location` | object | user_location + Limited Login (iOS) |
+| `gender` | string | user_gender + Limited Login (iOS) |
+| `permissions` | string[] | Always |
+
+## Best Practices
+
+1. **Always check for null** - The profile may be null if the user is not logged in
+2. **Handle Android email limitation** - Use Graph API to fetch email on Android
+3. **Request minimal permissions** - Only request the permissions you actually need
+4. **Cache profile data** - Avoid excessive API calls by caching profile information
+5. **Respect user privacy** - Only display profile information that's relevant to your app

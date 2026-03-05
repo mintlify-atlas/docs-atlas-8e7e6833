@@ -1,0 +1,316 @@
+---
+title: Expo Setup
+description: Configure React Native FBSDK Next for Expo apps
+---
+
+<Warning>
+  This package cannot be used in the "Expo Go" app because it requires custom native code. You must use Expo Development Builds or Bare Workflow.
+</Warning>
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install react-native-fbsdk-next
+    # or
+    yarn add react-native-fbsdk-next
+    ```
+  </Step>
+
+  <Step title="Add the config plugin">
+    Add the [config plugin](https://docs.expo.io/guides/config-plugins/) to your `app.json` or `app.config.js`:
+
+    <CodeGroup>
+      ```json app.json (Basic)
+      {
+        "expo": {
+          "plugins": ["react-native-fbsdk-next"]
+        }
+      }
+      ```
+
+      ```json app.json (With Configuration)
+      {
+        "expo": {
+          "plugins": [
+            [
+              "react-native-fbsdk-next",
+              {
+                "appID": "48127127xxxxxxxx",
+                "clientToken": "c5078631e4065b60d7544a95xxxxxxxx",
+                "displayName": "My App Name",
+                "scheme": "fb48127127xxxxxxxx",
+                "advertiserIDCollectionEnabled": false,
+                "autoLogAppEventsEnabled": false,
+                "isAutoInitEnabled": true,
+                "iosUserTrackingPermission": "This identifier will be used to deliver personalized ads to you."
+              }
+            ]
+          ]
+        }
+      }
+      ```
+
+      ```javascript app.config.js
+      export default {
+        expo: {
+          plugins: [
+            [
+              "react-native-fbsdk-next",
+              {
+                appID: "48127127xxxxxxxx",
+                clientToken: "c5078631e4065b60d7544a95xxxxxxxx",
+                displayName: "My App Name",
+                scheme: "fb48127127xxxxxxxx",
+                advertiserIDCollectionEnabled: false,
+                autoLogAppEventsEnabled: false,
+                isAutoInitEnabled: true,
+                iosUserTrackingPermission: "This identifier will be used to deliver personalized ads to you."
+              }
+            ]
+          ]
+        }
+      };
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Rebuild your app">
+    <Warning>
+      Every time you change the plugin configuration, you must rebuild your native app.
+    </Warning>
+
+    ```bash
+    # Prebuild to generate native code
+    npx expo prebuild
+
+    # Run on iOS
+    npx expo run:ios
+
+    # Run on Android
+    npx expo run:android
+    ```
+
+    See the [Expo documentation](https://docs.expo.io/workflow/customizing/) for more details.
+  </Step>
+</Steps>
+
+## Configuration Options
+
+### Required Configuration
+
+<Warning>
+  Unlike the deprecated `expo-facebook` package, the `clientToken` field is **required** for this library. You can get this value from **Facebook Developers > Your App > Settings > Advanced**.
+</Warning>
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `appID` | `string` | Your Facebook Application ID |
+| `displayName` | `string` | Your Application Name |
+| `clientToken` | `string` | Your Facebook Client Token (found in Settings > Advanced) |
+| `scheme` | `string` | URL scheme for returning to the app from Facebook. Format: `fb[app-id]` |
+
+### Optional Configuration
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `iosUserTrackingPermission` | `string \| false` | - | iOS User Tracking Permission message. Set to `false` to omit. |
+| `advertiserIDCollectionEnabled` | `boolean` | `false` | Enable advertiser ID collection |
+| `autoLogAppEventsEnabled` | `boolean` | `false` | Automatically log app events |
+| `isAutoInitEnabled` | `boolean` | `false` | Auto-initialize the Facebook SDK |
+
+## Example Configuration
+
+Here's a complete example with all options:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "48127127xxxxxxxx",
+          "clientToken": "c5078631e4065b60d7544a95xxxxxxxx",
+          "displayName": "RN SDK Demo",
+          "scheme": "fb48127127xxxxxxxx",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true,
+          "iosUserTrackingPermission": "This identifier will be used to deliver personalized ads to you."
+        }
+      ]
+    ]
+  }
+}
+```
+
+## Enabling Auto App Installs
+
+To enable automatic app install tracking in Expo:
+
+<Steps>
+  <Step title="Update configuration">
+    Set both flags to `true` in your config:
+
+    ```json
+    {
+      "autoLogAppEventsEnabled": true,
+      "advertiserIDCollectionEnabled": true
+    }
+    ```
+  </Step>
+
+  <Step title="Request tracking permission (iOS)">
+    <Warning>
+      On iOS, you need user consent to collect user data. This is required by Apple's App Tracking Transparency framework.
+    </Warning>
+
+    Add this code somewhere in your `App.tsx` or main app component:
+
+    ```javascript
+    import { requestTrackingPermissionsAsync } from 'expo-tracking-transparency';
+    import { Settings } from 'react-native-fbsdk-next';
+
+    // Request permission and initialize SDK
+    const { status } = await requestTrackingPermissionsAsync(); 
+
+    Settings.initializeSDK();
+
+    if (status === 'granted') {
+        await Settings.setAdvertiserTrackingEnabled(true);
+    }
+    ```
+  </Step>
+</Steps>
+
+## Expo Bare Workflow - iOS AppDelegate Setup
+
+If you're using Expo Bare Workflow with React Native 0.77+, your `AppDelegate.swift` will extend `ExpoAppDelegate` instead of the standard React Native app delegate.
+
+### Required Imports
+
+```swift
+import Expo
+import React
+import FBSDKCoreKit              // <- Add This
+import AppTrackingTransparency   // <- Add This
+```
+
+### Example Implementation
+
+```swift
+import Expo
+import React
+import FBSDKCoreKit
+import AppTrackingTransparency
+
+@UIApplicationMain
+public class AppDelegate: ExpoAppDelegate {
+  
+  public override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+  ) -> Bool {
+    
+    // Your existing Expo setup code...
+    
+    // Initialize Facebook SDK
+    ApplicationDelegate.shared.application(
+      application,
+      didFinishLaunchingWithOptions: launchOptions
+    )
+    
+    // Request tracking authorization
+    if #available(iOS 14, *) {
+      ATTrackingManager.requestTrackingAuthorization { _ in
+        AppEvents.shared.activateApp()
+      }
+    } else {
+      AppEvents.shared.activateApp()
+    }
+    
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+  
+  // CRITICAL: Required for Facebook SSO to work
+  public override func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool {
+    let handledByFB = ApplicationDelegate.shared.application(
+      app, open: url, options: options)
+    let handledByRN = RCTLinkingManager.application(
+      app, open: url, options: options)
+    let handledBySuper = super.application(
+      app, open: url, options: options)
+    
+    return handledByFB || handledByRN || handledBySuper
+  }
+  
+  // Optional: Activate app when it becomes active
+  open override func applicationDidBecomeActive(_ application: UIApplication) {
+    super.applicationDidBecomeActive(application)
+    AppEvents.shared.activateApp()
+  }
+}
+```
+
+<Warning>
+  - Always call `super` methods to maintain Expo functionality
+  - The `ExpoAppDelegate` already handles many React Native bridge initialization tasks
+  - Ensure your Expo modules are compatible with the Facebook SDK
+</Warning>
+
+## Migrating from expo-facebook
+
+The `expo-facebook` module was deprecated in Expo SDK 45 and removed in SDK 46. Here are the key differences:
+
+### Key Changes
+
+1. **Client Token is Required**: Unlike `expo-facebook`, the `clientToken` field is mandatory
+2. **Different API**: The JavaScript API has changed significantly
+3. **New Package Name**: Use `react-native-fbsdk-next` instead of `expo-facebook`
+
+### Feature Parity Table
+
+| expo-facebook API | Supported | react-native-fbsdk-next API |
+|-------------------|-----------|-----------------------------|
+| `flushAsync()` | ✅ | `AppEventsLogger.flush()` |
+| `getAdvertiserIDAsync()` | ❌ | Not supported |
+| `getAnonymousIDAsync()` | ✅ | `AppEventsLogger.getAnonymousID()` |
+| `getAttributionIDAsync()` | ✅ | `AppEventsLogger.getAttributionID()` |
+| `getAuthenticationCredentialAsync()` | ✅ | `AccessToken.getCurrentAccessToken()` |
+| `getPermissionsAsync()` | ❌ | Not supported |
+| `getUserIDAsync()` | ✅ | `AppEventsLogger.getUserId()` |
+| `initializeAsync()` | ✅ | `Settings.setAppID()`, `Settings.initializeSDK()` |
+| `logEventAsync()` | ✅ | `AppEventsLogger.logEvent()` |
+| `logInWithReadPermissionsAsync()` | ✅ | `LoginManager.logInWithPermissions()` |
+| `logOutAsync()` | ✅ | `LoginManager.logOut()` |
+| `logPurchaseAsync()` | ✅ | `AppEventsLogger.logPurchase()` |
+| `logPushNotificationOpenAsync()` | ✅ | `AppEventsLogger.logPushNotificationOpen()` |
+| `requestPermissionsAsync()` | ❌ | Not supported |
+| `setAdvertiserIDCollectionEnabledAsync()` | ✅ | `Settings.setAdvertiserIDCollectionEnabled()` |
+| `setAdvertiserTrackingEnabledAsync()` | ✅ | `Settings.setAdvertiserTrackingEnabled()` |
+| `setAutoLogAppEventsEnabledAsync()` | ✅ | `Settings.setAutoLogAppEventsEnabled()` |
+| `setUserDataAsync()` | ✅ | `AppEventsLogger.setUserData()` |
+| `setUserIDAsync()` | ✅ | `AppEventsLogger.setUserID()` |
+
+## Android Setup
+
+For Android-specific setup (key hashes, strings.xml, etc.), the config plugin handles most of the configuration automatically. However, you may still need to:
+
+1. Generate and add key hashes to Facebook Developer Console (especially for release builds)
+2. Configure ProGuard rules if using code obfuscation
+
+See the [Android Setup](/setup/android) guide for detailed instructions.
+
+## Next Steps
+
+Once Expo setup is complete, you can:
+
+- [Get Started with Facebook Login](/quickstart)
+- [Implement Login](/features/login)
+- [Track App Events](/features/app-events)

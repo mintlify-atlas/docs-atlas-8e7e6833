@@ -1,0 +1,206 @@
+---
+title: Android Setup
+description: Configure React Native FBSDK Next for Android apps
+---
+
+## Prerequisites
+
+Before setting up the Android SDK:
+
+- Install the library via npm/yarn
+- Follow the [Facebook Android SDK Getting Started Guide](https://developers.facebook.com/docs/android/getting-started/) to set up a Facebook app
+- The library will be auto-linked on React Native 0.60+
+
+## Configuration
+
+<Steps>
+  <Step title="Add Facebook App ID to strings.xml">
+    Open or create `android/app/src/main/res/values/strings.xml` and add your Facebook credentials:
+
+    ```xml
+    <?xml version="1.0" encoding="utf-8"?>
+    <resources>
+        <string name="app_name">Your App Name</string>
+        <string name="facebook_app_id">YOUR_FACEBOOK_APP_ID</string>
+        <string name="fb_login_protocol_scheme">fbYOUR_FACEBOOK_APP_ID</string>
+        <string name="facebook_client_token">YOUR_CLIENT_TOKEN</string>
+    </resources>
+    ```
+
+    Replace:
+    - `YOUR_FACEBOOK_APP_ID` with your Facebook App ID
+    - `YOUR_CLIENT_TOKEN` with your Facebook Client Token (found in Facebook Developers > Settings > Advanced)
+  </Step>
+
+  <Step title="Update AndroidManifest.xml">
+    Add the following to your `android/app/src/main/AndroidManifest.xml`:
+
+    ```xml
+    <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+        
+        <application>
+            <!-- Add this meta-data inside the application tag -->
+            <meta-data 
+                android:name="com.facebook.sdk.ApplicationId" 
+                android:value="@string/facebook_app_id"/>
+            
+            <meta-data 
+                android:name="com.facebook.sdk.ClientToken" 
+                android:value="@string/facebook_client_token"/>
+            
+            <!-- Your other configuration -->
+        </application>
+        
+        <!-- Add internet permission if not already present -->
+        <uses-permission android:name="android.permission.INTERNET"/>
+        
+    </manifest>
+    ```
+  </Step>
+
+  <Step title="Generate and add Key Hash">
+    <Warning>
+      You **must** generate and add your key hash to Facebook Developer Console for Facebook login to work, especially when the Facebook app is installed on the device.
+    </Warning>
+
+    Generate the key hash for your **debug keystore**:
+
+    ### For macOS/Linux:
+
+    ```bash
+    keytool -exportcert -alias androiddebugkey -keystore ~/.android/debug.keystore | openssl sha1 -binary | openssl base64
+    ```
+
+    Default debug keystore password: `android`
+
+    ### For Windows:
+
+    ```bash
+    keytool -exportcert -alias androiddebugkey -keystore %HOMEPATH%\.android\debug.keystore | openssl sha1 -binary | openssl base64
+    ```
+
+    ### For Release Builds:
+
+    Point the command to your app's release keystore file. You can find its location by checking the `storeFile` property in `android/app/build.gradle`:
+
+    ```bash
+    keytool -exportcert -alias YOUR_RELEASE_KEY_ALIAS -keystore /path/to/your/release.keystore | openssl sha1 -binary | openssl base64
+    ```
+
+    ### For Google Play App Signing:
+
+    <Warning>
+      If Google is signing your releases, you'll need to get the SHA-1 from the Play Console and convert it.
+    </Warning>
+
+    1. Go to [Play Console](https://play.google.com/console/)
+    2. Navigate to **Release** > **App signing** > **App signing key certificate**
+    3. Copy the SHA-1 certificate fingerprint
+    4. Convert it to Base64:
+
+    ```bash
+    echo YOUR_SHA1_HERE | xxd -r -p | openssl base64
+    ```
+
+    **For internal testing:** Repeat the process for the SHA-1 from **Release** > **Internal app sharing** > **Internal test certificate**.
+
+    ### Add Key Hash to Facebook:
+
+    1. Go to [Facebook Developers](https://developers.facebook.com)
+    2. Select your app
+    3. Go to **Settings** > **Basic**
+    4. Scroll down to **Key Hashes**
+    5. Add the generated hash(es)
+  </Step>
+</Steps>
+
+## Manual Linking (React Native < 0.60)
+
+<Warning>
+  For React Native versions below 0.60, manual linking is required. Consider upgrading to a newer version of React Native.
+</Warning>
+
+<Steps>
+  <Step title="Update settings.gradle">
+    Add to `android/settings.gradle`:
+
+    ```groovy
+    include ':react-native-fbsdk-next'
+    project(':react-native-fbsdk-next').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-fbsdk-next/android')
+    ```
+  </Step>
+
+  <Step title="Update app/build.gradle">
+    Add to `android/app/build.gradle`:
+
+    ```groovy
+    dependencies {
+       // ... other dependencies
+       implementation project(':react-native-fbsdk-next')
+    }
+    ```
+  </Step>
+
+  <Step title="Update MainApplication.java">
+    Add the import at the top:
+
+    ```java
+    import com.facebook.reactnative.androidsdk.FBSDKPackage;
+    ```
+
+    Add the package to the list:
+
+    ```java
+    @Override
+    protected List<ReactPackage> getPackages() {
+        return Arrays.asList(
+                new MainReactPackage(),
+                new FBSDKPackage() // <- Add this
+        );
+    }
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Cannot run the Android project
+
+**Possible causes:**
+
+1. You didn't add the required configuration to `strings.xml` and `AndroidManifest.xml`
+2. You didn't set up a Facebook app properly
+3. Your Facebook App ID or Client Token is incorrect
+
+**Solution:** Double-check all configuration steps above.
+
+### "Error logging you into this application" when using Facebook app
+
+<Warning>
+  This typically means the appropriate signing certificate hash hasn't been saved to your Facebook app.
+</Warning>
+
+Follow the key hash generation steps in Step 3 above and ensure:
+
+- You've generated the hash from the **correct keystore** (debug vs release)
+- The hash has been added to your Facebook app's **Key Hashes** section
+- If using Google Play App Signing, you've added both the **App signing key** hash AND **Internal test certificate** hash (if applicable)
+
+See the [Facebook documentation](https://developers.facebook.com/docs/facebook-login/android#6--provide-the-development-and-release-key-hashes-for-your-app) for more details.
+
+### ProGuard Issues
+
+If you're using ProGuard for code obfuscation in release builds, add the following to your `proguard-rules.pro`:
+
+```
+-keep class com.facebook.** { *; }
+-keep interface com.facebook.** { *; }
+```
+
+## Next Steps
+
+Once Android setup is complete, you can:
+
+- [Get Started with Facebook Login](/quickstart)
+- [Implement Login](/features/login)
+- [Track App Events](/features/app-events)
