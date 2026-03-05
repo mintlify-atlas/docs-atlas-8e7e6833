@@ -1,0 +1,156 @@
+---
+title: "SendButton"
+description: "Button component for sending content via Facebook Messenger"
+---
+
+<Note>
+  SendButton is specifically designed for sharing content via Facebook Messenger. For general sharing to Facebook, use [ShareButton](/api/share-button).
+</Note>
+
+## Overview
+
+The `SendButton` component provides a native Facebook Messenger send button that allows users to send content via Messenger. This is different from the ShareButton which shares to Facebook feeds.
+
+## Import
+
+```typescript
+import { SendButton } from 'react-native-fbsdk-next';
+```
+
+## Props
+
+<ParamField path="shareContent" type="ShareContent" required>
+  The content to be sent via Messenger. Can be `ShareLinkContent`, `SharePhotoContent`, or `ShareVideoContent`.
+  
+  See the [ShareContent documentation](/api/share-content) for details on content types.
+</ParamField>
+
+<ParamField path="style" type="ViewStyle">
+  Optional custom styling for the button. If not provided, uses default dimensions (30px height, 80px width).
+</ParamField>
+
+## Type Definition
+
+```typescript
+interface SendButtonProps {
+  shareContent: ShareContent;
+  style?: ViewStyle;
+}
+```
+
+## Usage Examples
+
+### Basic Usage
+
+Send a link via Messenger:
+
+```tsx
+import React from 'react';
+import { View } from 'react-native';
+import { SendButton } from 'react-native-fbsdk-next';
+
+function ShareToMessenger() {
+  const shareContent = {
+    contentType: 'link',
+    contentUrl: 'https://example.com/article',
+    contentTitle: 'Check out this article',
+    contentDescription: 'An interesting article to read',
+  };
+
+  return (
+    <View>
+      <SendButton shareContent={shareContent} />
+    </View>
+  );
+}
+```
+
+### Custom Styling
+
+Customize the button appearance:
+
+```tsx
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { SendButton } from 'react-native-fbsdk-next';
+
+function CustomSendButton() {
+  const shareContent = {
+    contentType: 'link',
+    contentUrl: 'https://example.com',
+  };
+
+  return (
+    <View>
+      <SendButton 
+        shareContent={shareContent}
+        style={styles.sendButton}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  sendButton: {
+    height: 40,
+    width: 100,
+  },
+});
+```
+
+### Send Photo via Messenger
+
+```tsx
+import React from 'react';
+import { View } from 'react-native';
+import { SendButton } from 'react-native-fbsdk-next';
+
+function SendPhotoButton() {
+  const photoContent = {
+    contentType: 'photo',
+    photos: [
+      {
+        imageUrl: 'file:///path/to/photo.jpg',
+      },
+    ],
+  };
+
+  return (
+    <View>
+      <SendButton shareContent={photoContent} />
+    </View>
+  );
+}
+```
+
+## Default Styling
+
+The SendButton has the following default dimensions:
+
+- **Height**: 30px
+- **Width**: 80px
+
+You can override these with the `style` prop.
+
+## Platform Support
+
+- **iOS**: Supported
+- **Android**: Supported
+
+<Note>
+  The Facebook Messenger app must be installed on the device for the SendButton to work. If Messenger is not installed, the button may not function as expected.
+</Note>
+
+## Comparison with Other Buttons
+
+| Component | Purpose | Destination |
+| --- | --- | --- |
+| **SendButton** | Send content via Messenger | Facebook Messenger |
+| **ShareButton** | Share to Facebook feed | Facebook Timeline/Feed |
+| **LoginButton** | Authenticate users | N/A (Authentication) |
+
+## Related
+
+- [ShareButton](/api/share-button) - Share content to Facebook feed
+- [ShareContent](/api/share-content) - Content types for sharing
+- [MessageDialog](/api/message-dialog) - Programmatic Messenger sharing

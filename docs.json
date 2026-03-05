@@ -91,6 +91,7 @@
             "pages": [
               "api/share-dialog",
               "api/share-button",
+              "api/send-button",
               "api/share-content",
               "api/message-dialog"
             ]
