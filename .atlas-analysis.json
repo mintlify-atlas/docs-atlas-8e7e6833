@@ -1,0 +1,145 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "React Native FBSDK Next",
+  "projectDescription": "Facebook SDK support for React Native apps with login, sharing, analytics, and Graph API integration.",
+  "theme": "palm",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Platform Setup",
+            "pages": [
+              "setup/ios",
+              "setup/android",
+              "setup/expo"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/authentication",
+              "concepts/login-methods",
+              "concepts/limited-login",
+              "concepts/graph-api"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/login",
+              "features/sharing",
+              "features/app-events",
+              "features/profiles",
+              "features/game-requests",
+              "features/app-links"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/testing",
+              "guides/troubleshooting",
+              "guides/migration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/login-manager",
+              "api/login-button",
+              "api/access-token",
+              "api/authentication-token"
+            ]
+          },
+          {
+            "group": "Sharing",
+            "pages": [
+              "api/share-dialog",
+              "api/share-button",
+              "api/share-content",
+              "api/message-dialog"
+            ]
+          },
+          {
+            "group": "Analytics",
+            "pages": [
+              "api/app-events-logger",
+              "api/aem-reporter"
+            ]
+          },
+          {
+            "group": "Graph API",
+            "pages": [
+              "api/graph-request",
+              "api/graph-request-manager"
+            ]
+          },
+          {
+            "group": "User & Profile",
+            "pages": [
+              "api/profile",
+              "api/settings"
+            ]
+          },
+          {
+            "group": "Other",
+            "pages": [
+              "api/game-request-dialog",
+              "api/app-link"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Facebook Login with OAuth and Limited Login support",
+    "Share content via ShareDialog with photos, videos, and links",
+    "App Events tracking and analytics",
+    "Graph API requests for Facebook data",
+    "User profile management",
+    "Game requests and invitations",
+    "Deep linking with App Links",
+    "Expo config plugin support",
+    "iOS and Android native integration"
+  ],
+  "publicApiSurface": [
+    "AccessToken",
+    "AuthenticationToken",
+    "LoginManager",
+    "LoginButton",
+    "ShareDialog",
+    "ShareButton",
+    "SendButton",
+    "AppEventsLogger",
+    "AEMReporterIOS",
+    "GraphRequest",
+    "GraphRequestManager",
+    "Profile",
+    "Settings",
+    "GameRequestDialog",
+    "MessageDialog",
+    "AppLink",
+    "ShareLinkContent",
+    "SharePhotoContent",
+    "ShareVideoContent"
+  ]
+}
